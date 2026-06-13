@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://jdktrapp.netlify.app/">
+<a href="https://boisterous-souffle-33150b.netlify.app/">
 <img src="https://raw.githubusercontent.com/Mike-Vision/JDK-Trap/main/src/JDKTrap/JDKTrap.png" alt="preview" width="100px"/>
 </a>
 </p>
@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/Mike-Vision/JDK-Trap/releases/latest">Latest release</a> |
   <a href="https://www.youtube.com/watch?v=P-GqTUo_HIA&t">Tutorial</a> |
-  <a href="https://jdktrapp.netlify.app/donate/donate">Donate</a>
+  <a href="https://boisterous-souffle-33150b.netlify.app/donate/donate">Donate</a>
 </p>
 
 <div align="center">

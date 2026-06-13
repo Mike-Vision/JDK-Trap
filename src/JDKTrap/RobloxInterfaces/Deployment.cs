@@ -263,23 +263,43 @@ namespace JDKTrap.RobloxInterfaces
                     File.Delete(path);
                 }
 
-                using var client = new HttpClient
+                int retries = 3;
+                int delayMs = 2000;
+
+                for (int attempt = 1; attempt <= retries; attempt++)
                 {
-                    Timeout = TimeSpan.FromMinutes(5)
-                };
+                    try
+                    {
+                        using var client = new HttpClient
+                        {
+                            Timeout = TimeSpan.FromMinutes(5)
+                        };
 
-                using var resp = await client.GetAsync(url,
-                    HttpCompletionOption.ResponseHeadersRead);
+                        using var resp = await client.GetAsync(url,
+                            HttpCompletionOption.ResponseHeadersRead);
 
-                resp.EnsureSuccessStatusCode();
+                        resp.EnsureSuccessStatusCode();
 
-                await using var fs =
-                    new FileStream(path, FileMode.Create,
-                        FileAccess.Write, FileShare.None);
+                        await using var fs =
+                            new FileStream(path, FileMode.Create,
+                                FileAccess.Write, FileShare.None);
 
-                await resp.Content.CopyToAsync(fs);
+                        await resp.Content.CopyToAsync(fs);
+                        return path;
+                    }
+                    catch (Exception ex) when (attempt < retries)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, $"Attempt {attempt} failed downloading {url}: {ex.Message}. Retrying in {delayMs}ms...");
+                        if (File.Exists(path))
+                        {
+                            try { File.Delete(path); } catch { }
+                        }
+                        await Task.Delay(delayMs);
+                        delayMs *= 2;
+                    }
+                }
 
-                return path;
+                throw new HttpRequestException($"Failed to download {url} after {retries} attempts.");
             }
 
             luaPackagesZip = await DownloadFile(luaPackagesUrl, luaPackagesZip);

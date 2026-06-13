@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WpfImage = System.Windows.Controls.Image;
 using WpfBrushes = System.Windows.Media.Brushes;
+using RobloxLightingOverlay.Effects;
 
 namespace RobloxLightingOverlay
 {
@@ -145,32 +146,59 @@ namespace RobloxLightingOverlay
 
     internal static class ScreenCapture
     {
+        private static Bitmap _cacheBmp;
+        private static Graphics _cacheGraphics;
+        private static WriteableBitmap _cacheWb;
+
         public static WriteableBitmap Capture(
             int x, int y, int width, int height)
         {
-            using var bmp = new Bitmap(width, height);
-            using var g = Graphics.FromImage(bmp);
+            if (width <= 0 || height <= 0)
+                return null;
 
-            g.CopyFromScreen(x, y, 0, 0, bmp.Size);
+            if (_cacheBmp == null || _cacheBmp.Width != width || _cacheBmp.Height != height)
+            {
+                _cacheBmp?.Dispose();
+                _cacheGraphics?.Dispose();
 
-            var hBitmap = bmp.GetHbitmap();
-            try
-            {
-                return Imaging.CreateBitmapSourceFromHBitmap(
-                    hBitmap,
-                    IntPtr.Zero,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions()
-                ) as WriteableBitmap;
+                _cacheBmp = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                _cacheGraphics = Graphics.FromImage(_cacheBmp);
+                _cacheWb = new WriteableBitmap(
+                    width, height,
+                    96, 96,
+                    PixelFormats.Bgra32, null);
             }
-            finally
+
+            _cacheGraphics.CopyFromScreen(x, y, 0, 0, _cacheBmp.Size);
+
+            var rect = new Rectangle(0, 0, width, height);
+            var bmpData = _cacheBmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            _cacheWb.Lock();
+            unsafe
             {
-                DeleteObject(hBitmap);
+                Buffer.MemoryCopy(
+                    (void*)bmpData.Scan0,
+                    (void*)_cacheWb.BackBuffer,
+                    _cacheWb.BackBufferStride * _cacheWb.PixelHeight,
+                    bmpData.Stride * height);
             }
+            _cacheWb.AddDirtyRect(new Int32Rect(0, 0, width, height));
+            _cacheWb.Unlock();
+
+            _cacheBmp.UnlockBits(bmpData);
+
+            return _cacheWb;
         }
 
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
+        public static void ClearCache()
+        {
+            _cacheBmp?.Dispose();
+            _cacheBmp = null;
+            _cacheGraphics?.Dispose();
+            _cacheGraphics = null;
+            _cacheWb = null;
+        }
     }
 
     internal sealed class TemporalSmoother
@@ -188,15 +216,38 @@ namespace RobloxLightingOverlay
             if (current == null)
                 return null;
 
-            if (_previous == null)
+            if (_previous == null ||
+                _previous.PixelWidth != current.PixelWidth ||
+                _previous.PixelHeight != current.PixelHeight)
             {
-                _previous = new WriteableBitmap(current);
+                _previous = new WriteableBitmap(
+                    current.PixelWidth, current.PixelHeight,
+                    current.DpiX, current.DpiY,
+                    current.Format, null);
+                CopyPixels(current, _previous);
                 return current;
             }
 
             Blend(current, _previous, _alpha);
-            _previous = new WriteableBitmap(current);
+            CopyPixels(current, _previous);
             return current;
+        }
+
+        private unsafe void CopyPixels(WriteableBitmap src, WriteableBitmap dest)
+        {
+            src.Lock();
+            dest.Lock();
+
+            Buffer.MemoryCopy(
+                (void*)src.BackBuffer,
+                (void*)dest.BackBuffer,
+                dest.BackBufferStride * dest.PixelHeight,
+                src.BackBufferStride * src.PixelHeight);
+
+            dest.AddDirtyRect(new Int32Rect(0, 0, dest.PixelWidth, dest.PixelHeight));
+
+            dest.Unlock();
+            src.Unlock();
         }
 
         private unsafe void Blend(
@@ -211,8 +262,22 @@ namespace RobloxLightingOverlay
             byte* c = (byte*)cur.BackBuffer;
             byte* p = (byte*)prev.BackBuffer;
 
-            for (int i = 0; i < bytes; i++)
-                c[i] = (byte)(c[i] * (1f - alpha) + p[i] * alpha);
+            int alphaI = (int)(alpha * 256f);
+            int alphaInvI = 256 - alphaI;
+
+            int numThreads = Environment.ProcessorCount;
+            int chunk = bytes / numThreads;
+
+            System.Threading.Tasks.Parallel.For(0, numThreads, t =>
+            {
+                int start = t * chunk;
+                int end = (t == numThreads - 1) ? bytes : start + chunk;
+
+                for (int i = start; i < end; i++)
+                {
+                    c[i] = (byte)((c[i] * alphaInvI + p[i] * alphaI) >> 8);
+                }
+            });
 
             cur.AddDirtyRect(
                 new Int32Rect(0, 0, cur.PixelWidth, cur.PixelHeight));
@@ -259,29 +324,5 @@ namespace RobloxLightingOverlay
         }
     }
 
-    internal sealed class MotionBlurEffect : IDisposable
-    {
-        public void Apply(
-            WriteableBitmap bmp,
-            float dx,
-            float dy,
-            float strength)
-        {
-        }
 
-        public void Dispose() { }
-    }
-    internal sealed class CameraMotionDetector
-    {
-        public float DirectionX { get; private set; }
-        public float DirectionY { get; private set; }
-        public float Strength { get; private set; }
-
-        public void Analyze(WriteableBitmap bmp)
-        {
-            DirectionX = 0.2f;
-            DirectionY = 0.1f;
-            Strength = 1.0f;
-        }
-    }
 }

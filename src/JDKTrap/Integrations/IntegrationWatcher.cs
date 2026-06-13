@@ -1,4 +1,4 @@
-﻿namespace JDKTrap.Integrations
+namespace JDKTrap.Integrations
 {
     public class IntegrationWatcher : IDisposable
     {
@@ -22,7 +22,7 @@
 
             foreach (var integration in App.Settings.Prop.CustomIntegrations)
             {
-                if (!integration.SpecifyGame || integration.GameID != currentGameId.ToString())
+                if (integration.SpecifyGame && integration.GameID != currentGameId.ToString())
                     continue;
 
                 LaunchIntegration(integration);

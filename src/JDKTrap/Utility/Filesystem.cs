@@ -66,7 +66,7 @@ namespace JDKTrap.Utility
                 return;
             directory.Attributes = FileAttributes.Normal;
 
-            foreach (var info in directory.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            foreach (var info in directory.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
             {
                 try
                 {

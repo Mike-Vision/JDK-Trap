@@ -1,11 +1,12 @@
-﻿namespace JDKTrap.UI.ViewModels.Installer
+namespace JDKTrap.UI.ViewModels.Installer
 {
     public class WelcomeViewModel : NotifyPropertyChangedViewModel
     {
         // formatting is done here instead of in xaml, it's just a bit easier
         public string MainText => String.Format(
             Strings.Installer_Welcome_MainText,
-            "Thank you for downloading JDKTrap. This installation process will be quick and simple, and you will be able to configure any of JDKTrap's settings after installation."
+            $"https://github.com/{App.ProjectRepository.Trim('/')}",
+            "https://boisterous-souffle-33150b.netlify.app"
         );
 
         public bool CanContinue { get; set; } = false;

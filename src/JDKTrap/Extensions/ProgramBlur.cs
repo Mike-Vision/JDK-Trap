@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
@@ -38,6 +38,8 @@ namespace RobloxLightingOverlay.Effects
             byte* hist = (byte*)_history.BackBuffer;
 
             double keep = Math.Clamp(1.0 - strength, 0.1, 0.9);
+            int keepI = (int)(keep * 256.0);
+            int keepInvI = 256 - keepI;
 
             for (int y = 0; y < h; y++)
             {
@@ -46,9 +48,9 @@ namespace RobloxLightingOverlay.Effects
 
                 for (int x = 0; x < w * 4; x += 4)
                 {
-                    cRow[x] = (byte)(hRow[x] * keep + cRow[x] * (1 - keep));
-                    cRow[x + 1] = (byte)(hRow[x + 1] * keep + cRow[x + 1] * (1 - keep));
-                    cRow[x + 2] = (byte)(hRow[x + 2] * keep + cRow[x + 2] * (1 - keep));
+                    cRow[x] = (byte)((hRow[x] * keepI + cRow[x] * keepInvI) >> 8);
+                    cRow[x + 1] = (byte)((hRow[x + 1] * keepI + cRow[x + 1] * keepInvI) >> 8);
+                    cRow[x + 2] = (byte)((hRow[x + 2] * keepI + cRow[x + 2] * keepInvI) >> 8);
                     cRow[x + 3] = 255;
                 }
             }

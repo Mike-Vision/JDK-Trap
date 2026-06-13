@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,7 +33,13 @@ namespace JDKTrap.Integrations
                 _ => int.MaxValue,
             };
 
-            var Threshold = DateTime.Now.AddHours(-MaxFileAge);
+            if (MaxFileAge == int.MaxValue)
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Cleaner is disabled (Never). Skipping cleaning.");
+                return;
+            }
+
+            var Threshold = DateTime.Now.AddDays(-MaxFileAge);
 
             foreach (var directory in Directories)
             {

@@ -121,6 +121,20 @@ namespace RobloxLightingOverlay
         Stopwatch timer = Stopwatch.StartNew();
         double last;
 
+        private static readonly float[] NoiseTable = GenerateNoiseTable(2048);
+        private int _noiseIdx = 0;
+
+        private static float[] GenerateNoiseTable(int size)
+        {
+            var rng = new Random();
+            var table = new float[size];
+            for (int i = 0; i < size; i++)
+            {
+                table[i] = (float)((rng.NextDouble() - 0.5) * 255.0);
+            }
+            return table;
+        }
+
         public FxOverlay()
         {
             WindowStyle = WindowStyle.None;
@@ -190,51 +204,75 @@ namespace RobloxLightingOverlay
             byte* p = (byte*)bmp.BackBuffer;
             int stride = bmp.BackBufferStride;
 
-            double avgLum = 0;
+            float avgLum = 0f;
+
+            // Cache settings to local float variables to avoid overhead in the inner loop
+            float sGameBrightness = (float)s.GameBrightness;
+            float sGlowAmt = (float)s.GlowAmt;
+            float sVigAmt = (float)s.VigAmt;
+            float sFilmGrainStrength = (float)s.FilmGrainStrength;
+            float exposureMin = (float)s.ExposureMin;
+            float exposureMax = (float)s.ExposureMax;
+            float fpsSmoothStrength = (float)s.FpsSmoothStrength;
+            float lightExposureMult = 26f * Math.Clamp((float)exposure, 0.8f, 2.2f) * sGameBrightness;
+            bool sGlow = s.Glow;
+            bool sVignette = s.Vignette;
+            bool sFilmGrain = s.FilmGrain;
+
+            float invW = 1.0f / w;
+            float invH = 1.0f / h;
 
             for (int y = 0; y < h; y++)
+            {
+                float ny = y * invH * 2.0f - 1.0f;
+                float nySq = ny * ny;
+                int yStride = y * stride;
+
                 for (int x = 0; x < w; x++)
                 {
-                    double nx = x / (double)w * 2 - 1;
-                    double ny = y / (double)h * 2 - 1;
-                    double dist = Math.Sqrt(nx * nx + ny * ny);
+                    float nx = x * invW * 2.0f - 1.0f;
+                    float dist = MathF.Sqrt(nx * nx + nySq);
 
-                    double light = 26 * Math.Clamp(exposure, 0.8, 2.2) * s.GameBrightness;
+                    float light = lightExposureMult;
 
-                    if (s.Glow)
-                        light += Math.Max(0, 1 - dist * 2) * 110 * s.GlowAmt;
+                    if (sGlow)
+                        light += MathF.Max(0f, 1f - dist * 2f) * 110f * sGlowAmt;
 
-                    byte v = (byte)Math.Clamp(light, 0, 235);
+                    float vFloat = Math.Clamp(light, 0f, 235f);
 
-                    if (s.Vignette)
+                    if (sVignette)
                     {
-                        double vig = Math.Clamp(1 - Math.Pow(dist, 2.2) * s.VigAmt, 0, 1);
-                        v = (byte)(v * vig);
+                        float vig = Math.Clamp(1f - MathF.Pow(dist, 2.2f) * sVigAmt, 0f, 1f);
+                        vFloat *= vig;
                     }
 
+                    byte v = (byte)vFloat;
                     byte rC = v, gC = v, bC = v;
 
-                    if (s.FilmGrain)
+                    if (sFilmGrain)
                     {
-                        int grain = (int)((rng.NextDouble() - 0.5) * 255 * s.FilmGrainStrength);
-                        rC = (byte)Math.Clamp(rC + grain, 0, 255);
-                        gC = (byte)Math.Clamp(gC + grain, 0, 255);
-                        bC = (byte)Math.Clamp(bC + grain, 0, 255);
+                        float grain = NoiseTable[_noiseIdx] * sFilmGrainStrength;
+                        _noiseIdx = (_noiseIdx + 1) & 2047;
+
+                        rC = (byte)Math.Clamp(rC + grain, 0f, 255f);
+                        gC = (byte)Math.Clamp(gC + grain, 0f, 255f);
+                        bC = (byte)Math.Clamp(bC + grain, 0f, 255f);
                     }
 
                     byte alpha = 0;
-                    if (s.Glow) alpha = Math.Max(alpha, (byte)40);
-                    if (s.Vignette) alpha = Math.Max(alpha, (byte)30);
-                    if (s.FilmGrain) alpha = Math.Max(alpha, (byte)25);
+                    if (sGlow) alpha = Math.Max(alpha, (byte)40);
+                    if (sVignette) alpha = Math.Max(alpha, (byte)30);
+                    if (sFilmGrain) alpha = Math.Max(alpha, (byte)25);
 
-                    int i = y * stride + x * 4;
+                    int i = yStride + x * 4;
                     p[i] = bC;
                     p[i + 1] = gC;
                     p[i + 2] = rC;
                     p[i + 3] = alpha;
 
-                    avgLum += v;
+                    avgLum += vFloat;
                 }
+            }
 
             avgLum /= (w * h);
             smoothMotion = smoothMotion * 0.9 + Math.Abs(avgLum - prevLum) / 255.0 * 0.1;
@@ -243,9 +281,9 @@ namespace RobloxLightingOverlay
             if (s.AutoExposure)
             {
                 exposure = Math.Clamp(
-                    exposure * (1 - s.FpsSmoothStrength) +
-                    (0.6 / Math.Max(0.08, avgLum / 255.0)) * s.FpsSmoothStrength,
-                    s.ExposureMin, s.ExposureMax);
+                    exposure * (1.0 - fpsSmoothStrength) +
+                    (0.6 / Math.Max(0.08, avgLum / 255.0)) * fpsSmoothStrength,
+                    exposureMin, exposureMax);
             }
 
             if (s.FXAA && scale <= 2)
@@ -261,9 +299,11 @@ namespace RobloxLightingOverlay
             int stride = bmp.BackBufferStride;
 
             for (int y = 1; y < h - 1; y++)
+            {
+                int yStride = y * stride;
                 for (int x = 1; x < w - 1; x++)
                 {
-                    int i = y * stride + x * 4;
+                    int i = yStride + x * 4;
                     int edge =
                         Math.Abs(p[i] - p[i + 4]) +
                         Math.Abs(p[i] - p[i + stride]);
@@ -279,6 +319,7 @@ namespace RobloxLightingOverlay
                         p[i + 2] = r;
                     }
                 }
+            }
         }
 
         void ClickThrough()

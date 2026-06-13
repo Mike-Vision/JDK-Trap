@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 
 namespace JDKTrap.Utility
 {
@@ -27,7 +27,7 @@ namespace JDKTrap.Utility
 
         public static string Stringify(byte[] hash)
         {
-            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            return System.Convert.ToHexString(hash).ToLowerInvariant();
         }
     }
 }

@@ -205,13 +205,14 @@ namespace JDKTrap.Integrations
                 string json = File.ReadAllText(settingsFile);
 
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json, options);
+                var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json, options);
                 int totalFlags = dict?.Count ?? 0;
 
                 return totalFlags;
             }
             catch (Exception ex)
             {
+                App.Logger.WriteLine("DiscordRichPresence::LoadFlags", $"Error loading flags count: {ex.Message}");
                 return -1;
             }
         }

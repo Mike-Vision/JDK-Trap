@@ -1237,7 +1237,7 @@ namespace JDKTrap
                         {
                             int total = Environment.ProcessorCount;
                             coreCount = Math.Clamp(coreCount, 1, total);
-                            long mask = (1L << coreCount) - 1;
+                            long mask = coreCount >= 64 ? -1L : (1L << coreCount) - 1;
 
                             foreach (var proc in Process.GetProcessesByName(ProcRobloxPlayer))
                             {
