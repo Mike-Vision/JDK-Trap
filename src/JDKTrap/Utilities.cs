@@ -1,4 +1,4 @@
-﻿using JDKTrap.AppData;
+using JDKTrap.AppData;
 using System.ComponentModel;
 using System.Security.AccessControl;
 using System.Windows;
@@ -97,6 +97,13 @@ namespace JDKTrap
             {
                 var version1 = GetVersionFromString(versionStr1);
                 var version2 = GetVersionFromString(versionStr2);
+
+                if (version1 is null && version2 is null)
+                    return VersionComparison.Equal;
+                if (version1 is null)
+                    return VersionComparison.LessThan;
+                if (version2 is null)
+                    return VersionComparison.GreaterThan;
 
                 return (VersionComparison)version1.CompareTo(version2);
             }

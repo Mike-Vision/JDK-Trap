@@ -1,4 +1,4 @@
-﻿using JDKTrap.Enums.FlagPresets;
+using JDKTrap.Enums.FlagPresets;
 using System.Windows;
 
 namespace JDKTrap
@@ -747,6 +747,81 @@ public static IReadOnlyDictionary<RefreshRate, string?> RefreshRates => new Dict
             }
 
             return mapping.First().Key;
+        }
+
+        /// <summary>
+        /// Tự động áp dụng các FastFlags tối ưu hiệu năng khi OptimizeRoblox = true.
+        /// Các FFlags này đã được kiểm chứng bởi cộng đồng Roblox modding và an toàn khi sử dụng.
+        /// </summary>
+        public void ApplyOptimizationFlags()
+        {
+            const string LOG_IDENT = "FastFlagManager::ApplyOptimizationFlags";
+
+            if (App.Settings.Prop?.OptimizeRoblox != true)
+                return;
+
+            int cores = Environment.ProcessorCount;
+            int asyncThreads = Math.Max(4, cores / 2);
+
+            // Multi-threading: cho phép Roblox tận dụng tối đa CPU cores
+            SetValue("FIntTaskSchedulerAutoThreadLimit", cores.ToString());
+            SetValue("FIntTaskSchedulerAsyncTasksMinimumThreadCount", asyncThreads.ToString());
+            SetValue("DFIntRuntimeConcurrency", cores.ToString());
+
+            // GPU Fast Light Culling: dùng GPU thay vì CPU để tính toán ánh sáng
+            SetValue("FFlagFastGPULightCulling3", "True");
+
+            // Task Scheduler: tránh sleep giảm latency
+            SetValue("DFFlagTaskSchedulerAvoidSleep", "True");
+
+            // Asset Preloading: tải trước textures, meshes, sounds giảm lag khi vào game
+            SetValue("DFFlagEnableMeshPreloading2", "True");
+            SetValue("DFFlagEnableSoundPreloading", "True");
+            SetValue("DFFlagEnableTexturePreloading", "True");
+            SetValue("FFlagPreloadAllFonts", "True");
+            SetValue("FFlagPreloadTextureItemsOption4", "True");
+
+            // Parallel Tasks: tăng số tác vụ song song cho physics, replication, network
+            int parallelTasks = Math.Max(4, cores / 2);
+            SetValue("DFIntInterpolationNumParallelTasks", parallelTasks.ToString());
+            SetValue("DFIntMegaReplicatorNumParallelTasks", parallelTasks.ToString());
+            SetValue("DFIntPhysicsReceiveNumParallelTasks", parallelTasks.ToString());
+            SetValue("FIntSimWorldTaskQueueParallelTasks", parallelTasks.ToString());
+
+            App.Logger.WriteLine(LOG_IDENT,
+                $"Applied optimization FFlags: {cores} cores, {asyncThreads} async threads, {parallelTasks} parallel tasks.");
+        }
+
+        /// <summary>
+        /// Gỡ bỏ các FastFlags tối ưu hiệu năng khi OptimizeRoblox bị tắt.
+        /// </summary>
+        public void RemoveOptimizationFlags()
+        {
+            const string LOG_IDENT = "FastFlagManager::RemoveOptimizationFlags";
+
+            // Chỉ xóa các FFlags do optimizer tự động thiết lập
+            var optimizerFlags = new[]
+            {
+                "FIntTaskSchedulerAutoThreadLimit",
+                "FIntTaskSchedulerAsyncTasksMinimumThreadCount",
+                "DFIntRuntimeConcurrency",
+                "FFlagFastGPULightCulling3",
+                "DFFlagTaskSchedulerAvoidSleep",
+                "DFFlagEnableMeshPreloading2",
+                "DFFlagEnableSoundPreloading",
+                "DFFlagEnableTexturePreloading",
+                "FFlagPreloadAllFonts",
+                "FFlagPreloadTextureItemsOption4",
+                "DFIntInterpolationNumParallelTasks",
+                "DFIntMegaReplicatorNumParallelTasks",
+                "DFIntPhysicsReceiveNumParallelTasks",
+                "FIntSimWorldTaskQueueParallelTasks"
+            };
+
+            foreach (var flag in optimizerFlags)
+                SetValue(flag, null);
+
+            App.Logger.WriteLine(LOG_IDENT, "Removed all optimization FFlags.");
         }
 
         public override void Save()

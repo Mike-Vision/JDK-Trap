@@ -59,8 +59,15 @@ namespace JDKTrap
                     ActivityWatcher.OnAppClose += delegate
                     {
                         App.Logger.WriteLine(LOG_IDENT, "Received desktop app exit, closing Roblox");
-                        using var process = Process.GetProcessById(_watcherData.ProcessId);
-                        process.CloseMainWindow();
+                        try
+                        {
+                            using var process = Process.GetProcessById(_watcherData.ProcessId);
+                            process.CloseMainWindow();
+                        }
+                        catch (Exception ex)
+                        {
+                            App.Logger.WriteLine(LOG_IDENT, $"Could not close Roblox process on app close: {ex.Message}");
+                        }
                     };
                 }
 

@@ -1,6 +1,8 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Threading;
 
@@ -12,6 +14,57 @@ namespace JDKTrap.UI.Elements.Controls
         public OptionControl()
         {
             InitializeComponent();
+            SetupBindings();
+        }
+
+        private void SetupBindings()
+        {
+            // Binding Header
+            Binding headerBinding = new Binding(nameof(Header))
+            {
+                Source = this,
+                TargetNullValue = ""
+            };
+            HeaderTextBlock.SetBinding(TextBlock.TextProperty, headerBinding);
+
+            // Binding HelpLink visibility container
+            Binding helpLinkVisibilityBinding = new Binding(nameof(HelpLink))
+            {
+                Source = this,
+                Converter = (IValueConverter)Resources["NullOrEmptyToVisibilityConverter"]
+            };
+            HelpLinkContainer.SetBinding(UIElement.VisibilityProperty, helpLinkVisibilityBinding);
+
+            // Binding HelpLink hyperlink parameter
+            Binding helpLinkParamBinding = new Binding(nameof(HelpLink))
+            {
+                Source = this
+            };
+            HelpHyperlink.SetBinding(Hyperlink.CommandParameterProperty, helpLinkParamBinding);
+
+            // Binding Description text
+            Binding descBinding = new Binding(nameof(Description))
+            {
+                Source = this,
+                TargetNullValue = ""
+            };
+            DescriptionTextBlock.SetBinding(MarkdownTextBlock.MarkdownTextProperty, descBinding);
+
+            // Binding Description visibility
+            Binding descVisibilityBinding = new Binding(nameof(Description))
+            {
+                Source = this,
+                Converter = (IValueConverter)Resources["NullOrEmptyToVisibilityConverter"]
+            };
+            DescriptionTextBlock.SetBinding(UIElement.VisibilityProperty, descVisibilityBinding);
+
+            // Binding InnerContent
+            Binding contentBinding = new Binding(nameof(InnerContent))
+            {
+                Source = this,
+                TargetNullValue = ""
+            };
+            InnerContentPresenter.SetBinding(ContentPresenter.ContentProperty, contentBinding);
         }
 
         public static readonly DependencyProperty HeaderProperty =

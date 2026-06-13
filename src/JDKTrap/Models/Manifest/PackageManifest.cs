@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Roblox Studio Mod Manager (ProjectSrc/Utility/PackageManifest.cs)
  * MIT License
  * Copyright (c) 2015-present MaximumADHD
@@ -32,7 +32,7 @@ namespace JDKTrap.Models.Manifest
 
                 // ignore launcher
                 if (fileName == "RobloxPlayerLauncher.exe")
-                    break;
+                    continue;
 
                 int packedSize = int.Parse(rawPackedSize);
                 int size = int.Parse(rawSize);

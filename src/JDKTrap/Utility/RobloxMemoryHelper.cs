@@ -9,20 +9,6 @@ public static class RobloxMemoryCleaner
 {
     #region Native
 
-    [DllImport("psapi.dll")]
-    private static extern bool EmptyWorkingSet(IntPtr hProcess);
-
-    [DllImport("kernel32.dll")]
-    private static extern bool SetProcessWorkingSetSize(
-        IntPtr hProcess,
-        IntPtr dwMinimumWorkingSetSize,
-        IntPtr dwMaximumWorkingSetSize);
-
-    [DllImport("kernel32.dll")]
-    private static extern bool SetPriorityClass(
-        IntPtr hProcess,
-        uint dwPriorityClass);
-
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr hObject);
 
@@ -50,8 +36,6 @@ public static class RobloxMemoryCleaner
     private const uint TOKEN_ADJUST_PRIVILEGES = 0x20;
     private const uint TOKEN_QUERY = 0x8;
     private const uint SE_PRIVILEGE_ENABLED = 0x2;
-
-    private const uint BELOW_NORMAL_PRIORITY_CLASS = 0x00004000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct LUID
@@ -106,56 +90,46 @@ public static class RobloxMemoryCleaner
 
     public static void CleanAllRobloxMemory()
     {
-        EnableDebugPrivilege();
-
-        var processList = new List<Process>();
-        foreach (var name in RobloxProcesses)
-        {
-            try
-            {
-                var procs = Process.GetProcessesByName(name);
-                if (procs != null)
-                {
-                    processList.AddRange(procs);
-                }
-            }
-            catch { }
-        }
-
-        if (processList.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var proc in processList)
-        {
-            try
-            {
-                long before = proc.WorkingSet64;
-
-                EmptyWorkingSet(proc.Handle);
-                SetProcessWorkingSetSize(proc.Handle, (IntPtr)(-1), (IntPtr)(-1));
-
-                proc.Refresh();
-                long after = proc.WorkingSet64;
-
-                Console.WriteLine(
-                    $"[{proc.ProcessName}:{proc.Id}] " +
-                    $"{FormatBytes(before)} → {FormatBytes(after)}");
-            }
-            catch { }
-            finally
-            {
-                proc.Dispose();
-            }
-        }
+        // Tránh gọi EmptyWorkingSet và SetProcessWorkingSetSize để không bị đẩy dữ liệu RAM ra pagefile gây stuttering cho game Roblox.
+        // Trình quản lý bộ nhớ của Windows sẽ tự động điều phối RAM tối ưu hơn.
     }
 
-    private static string FormatBytes(long bytes)
+    #region Standby List Cleanup
+
+    [DllImport("ntdll.dll")]
+    private static extern int NtSetSystemInformation(int infoClass, ref int info, int length);
+
+    private const int SystemMemoryListInformation = 80;
+    private const int MemoryPurgeStandbyList = 4;
+
+    /// <summary>
+    /// Giải phóng standby list hệ thống 1 lần trước khi khởi chạy Roblox.
+    /// Standby list chứa các trang bộ nhớ đã cache nhưng không còn cần thiết.
+    /// Giải phóng chúng cho phép Roblox sử dụng RAM vật lý ngay lập tức.
+    /// CHỈ gọi 1 lần duy nhất — gọi lặp lại sẽ phản tác dụng.
+    /// </summary>
+    public static void FreeSystemStandbyList()
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
-        if (bytes < 1073741824) return $"{bytes / 1048576.0:F1} MB";
-        return $"{bytes / 1073741824.0:F2} GB";
+        try
+        {
+            int command = MemoryPurgeStandbyList;
+            int result = NtSetSystemInformation(SystemMemoryListInformation, ref command, sizeof(int));
+            if (result == 0)
+            {
+                App.Logger.WriteLine("MemoryCleaner", "System standby list cleared successfully.");
+            }
+            else
+            {
+                // Lỗi thường gặp: STATUS_PRIVILEGE_NOT_HELD (0xC0000061) — cần quyền Admin
+                App.Logger.WriteLine("MemoryCleaner",
+                    $"Failed to clear standby list (NTSTATUS: 0x{result:X8}). Admin rights may be required.");
+            }
+        }
+        catch (Exception ex)
+        {
+            App.Logger.WriteLine("MemoryCleaner", $"FreeSystemStandbyList error: {ex.Message}");
+        }
     }
-}
+
+    #endregion
+}

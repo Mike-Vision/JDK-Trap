@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -186,7 +186,16 @@ namespace JDKTrap
 
             if (interlock.IsAcquired)
             {
-                bool showAlreadyRunningWarning = Process.GetProcessesByName(App.ProjectName).Length > 1;
+                bool showAlreadyRunningWarning = false;
+                var runningProcs = Process.GetProcessesByName(App.ProjectName);
+                try
+                {
+                    showAlreadyRunningWarning = runningProcs.Length > 1;
+                }
+                finally
+                {
+                    foreach (var p in runningProcs) p.Dispose();
+                }
 
                 var window = new UI.Elements.Settings.MainWindow(showAlreadyRunningWarning);
                 window.ShowDialog();
@@ -195,12 +204,18 @@ namespace JDKTrap
             {
                 App.Logger.WriteLine(LOG_IDENT, "Found an already existing menu window");
 
-                var process = Utilities.GetProcessesSafe()
-                    .FirstOrDefault(x => x.MainWindowTitle == Strings.Menu_Title);
-
-                if (process is not null && process.MainWindowHandle != IntPtr.Zero)
+                var processes = Utilities.GetProcessesSafe();
+                try
                 {
-                    PInvoke.SetForegroundWindow(new HWND(process.MainWindowHandle));
+                    var process = processes.FirstOrDefault(x => x.MainWindowTitle == Strings.Menu_Title);
+                    if (process is not null && process.MainWindowHandle != IntPtr.Zero)
+                    {
+                        PInvoke.SetForegroundWindow(new HWND(process.MainWindowHandle));
+                    }
+                }
+                finally
+                {
+                    foreach (var p in processes) p.Dispose();
                 }
 
                 App.Terminate();
@@ -296,7 +311,7 @@ namespace JDKTrap
 
             if (App.Settings.Prop.ExclusiveFullscreen)
             {
-                _ = Task.Run(RobloxFullscreen.WaitAndTriggerFullscreen); // redid https://github.com/jdktrap/JDKTrap/pull/362/changes/f0177af4ec39475a5b5c8ea5adc365dcdba0b0d9#diff-ed77fad50af3a8225af6d4c3e81af6095905805d31369da2b5d54f0c2382180e
+                _ = Task.Run(RobloxFullscreen.WaitAndTriggerFullscreen); // redid https://github.com/Mike-Vision/JDK-Trap/pull/362/changes/f0177af4ec39475a5b5c8ea5adc365dcdba0b0d9#diff-ed77fad50af3a8225af6d4c3e81af6095905805d31369da2b5d54f0c2382180e
             }
 
             Task.Run(App.Bootstrapper.Run).ContinueWith(t =>
@@ -318,8 +333,14 @@ namespace JDKTrap
                         string processName = App.RobloxPlayerAppName.Split('.')[0];
                         App.Logger.WriteLine(LOG_IDENT, $"Resolved Roblox name {processName}.exe, running in background.");
 
-                        while (Process.GetProcessesByName(processName).Any())
+                        while (true)
+                        {
+                            var procs = Process.GetProcessesByName(processName);
+                            bool any = procs.Any();
+                            foreach (var p in procs) p.Dispose();
+                            if (!any) break;
                             Thread.Sleep(5000);
+                        }
 
                         App.Logger.WriteLine(LOG_IDENT, "Every Roblox instance is closed, terminating the process");
                     }

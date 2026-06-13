@@ -12,6 +12,8 @@ namespace RobloxDX12Optimizer
     {
         private static CancellationTokenSource? _cts;
         private static Task? _backgroundTask;
+        private static DateTime _lastHeavyProcessScan = DateTime.MinValue;
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> ProbedDx12Processes = new();
         private static readonly string[] RobloxProcessNames = new[]
         {
             "RobloxPlayerBeta",
@@ -185,27 +187,32 @@ namespace RobloxDX12Optimizer
                     Logger.Warn($"Failed enumerating processes by name '{name}': {ex.Message}");
                 }
             }
-            try
+
+            if (list.Count == 0 && DateTime.UtcNow - _lastHeavyProcessScan > TimeSpan.FromSeconds(10))
             {
-                var all = Process.GetProcesses();
-                foreach (var p in all)
+                _lastHeavyProcessScan = DateTime.UtcNow;
+                try
                 {
-                    try
+                    var all = Process.GetProcesses();
+                    foreach (var p in all)
                     {
-                        if (!p.HasExited && p.ProcessName.IndexOf("roblox", StringComparison.OrdinalIgnoreCase) >= 0)
+                        try
                         {
-                            if (!list.Any(existing => existing.Id == p.Id))
+                            if (!p.HasExited && p.ProcessName.IndexOf("roblox", StringComparison.OrdinalIgnoreCase) >= 0)
                             {
-                                list.Add(p);
-                                continue;
+                                if (!list.Any(existing => existing.Id == p.Id))
+                                {
+                                    list.Add(p);
+                                    continue;
+                                }
                             }
                         }
+                        catch {}
+                        p.Dispose();
                     }
-                    catch {}
-                    p.Dispose();
                 }
+                catch {}
             }
-            catch {}
 
             var result = list.Where(p =>
             {
@@ -264,22 +271,7 @@ namespace RobloxDX12Optimizer
                 }
             }
 
-            try
-            {
-                if (!proc.HasExited)
-                {
-                    long minWs = Math.Max(4L * 1024 * 1024, (long)options.WorkingSetMinMB * 1024 * 1024);
-                    long maxWs = Math.Max(minWs, (long)options.WorkingSetMaxMB * 1024 * 1024);
-                    bool ok = SetProcessWorkingSetSize(proc.Handle, (IntPtr)minWs, (IntPtr)maxWs);
-                    Logger.Info($"SetProcessWorkingSetSize(PID {proc.Id}, min={minWs}, max={maxWs}) -> {ok}");
-                    bool emptied = EmptyWorkingSet(proc.Handle);
-                    Logger.Info($"EmptyWorkingSet(PID {proc.Id}) -> {emptied}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn("Working set tweak failed: " + ex.Message);
-            }
+
 
             if (options.BoostThreads)
             {
@@ -332,6 +324,9 @@ namespace RobloxDX12Optimizer
         }
         private static void ProbeForDx12UsageSafe(Process proc)
         {
+            int pid = proc.Id;
+            if (ProbedDx12Processes.ContainsKey(pid)) return;
+
             Task.Run(() =>
             {
                 try
@@ -357,6 +352,8 @@ namespace RobloxDX12Optimizer
                     {
                         Logger.Info($"Process PID {proc.Id} has not loaded d3d12.dll.");
                     }
+
+                    ProbedDx12Processes[pid] = hasDx12;
                 }
                 catch (Exception ex)
                 {
@@ -456,20 +453,11 @@ namespace RobloxDX12Optimizer
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
         private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-        [DllImport("psapi.dll", SetLastError = true)]
-        private static extern bool EmptyWorkingSet(IntPtr hProcess);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetProcessWorkingSetSize(IntPtr process, IntPtr minimumWorkingSetSize, IntPtr maximumWorkingSetSize);
-
         [DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")]
         private static extern uint timeBeginPeriod(uint uMilliseconds);
 
         [DllImport("winmm.dll", EntryPoint = "timeEndPeriod")]
         private static extern uint timeEndPeriod(uint uMilliseconds);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
 
         #endregion
 

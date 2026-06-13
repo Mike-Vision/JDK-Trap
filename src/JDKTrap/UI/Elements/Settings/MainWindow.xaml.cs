@@ -1,4 +1,4 @@
-﻿using DiscordRPC;
+using DiscordRPC;
 using DiscordRPC.Logging;
 using Microsoft.VisualBasic.ApplicationServices;
 using Microsoft.Web.WebView2.Core;
@@ -52,6 +52,7 @@ namespace JDKTrap.UI.Elements.Settings
         private double _currentRotation;
         private double _targetRotation;
         private DispatcherTimer _searchDebounceTimer;
+        private DispatcherTimer? _saveNavigationDebounce;
         private List<TextBlock> _allTextBlocksCache = new List<TextBlock>();
         private Page _lastPage = null;
         private const double MaxOffset = 0.04;
@@ -1291,11 +1292,6 @@ namespace JDKTrap.UI.Elements.Settings
 
             _discordClient.Initialize();
 
-            if (RootNavigation != null)
-            {
-                RootNavigation.Navigated += (s, e) => UpdateDiscordPresence();
-            }
-
             UpdateDiscordPresence();
         }
 
@@ -1354,24 +1350,34 @@ namespace JDKTrap.UI.Elements.Settings
             string pageName = GetCurrentPageName();
             string currentTime = DateTime.Now.ToString("hh:mm tt");
 
-            _discordClient.SetPresence(new DiscordRPC.RichPresence()
+            Task.Run(() =>
             {
-                Details = $"Viewing {pageName}", // the fuck was there state I just relized that it already displays fucking jdktrap THE FUCK
-                State = $"Current Time: {currentTime}",
-                Timestamps = DiscordRPC.Timestamps.Now,
-                Buttons = new[]
+                try
                 {
-            new DiscordRPC.Button
-            {
-                Label = "Discord",
-                Url = "https://discord.gg/bzdbHHytFR"
-            },
-            new DiscordRPC.Button
-            {
-                Label = "Github",  // sick of this shit ❤️‍🔥 why the fuck I put fire emoji it came out as a heart + fire fah
-                Url = "https://github.com/jdktrap/JDKTrap"
-            }
-        }
+                    _discordClient.SetPresence(new DiscordRPC.RichPresence()
+                    {
+                        Details = $"Viewing {pageName}",
+                        State = $"Current Time: {currentTime}",
+                        Timestamps = DiscordRPC.Timestamps.Now,
+                        Buttons = new[]
+                        {
+                            new DiscordRPC.Button
+                            {
+                                Label = "Discord",
+                                Url = "https://discord.gg/bzdbHHytFR"
+                            },
+                            new DiscordRPC.Button
+                            {
+                                Label = "Github",
+                                Url = "https://github.com/Mike-Vision/JDK-Trap"
+                            }
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException("MainWindow::UpdateDiscordPresence", ex);
+                }
             });
         }
 
@@ -1391,6 +1397,25 @@ namespace JDKTrap.UI.Elements.Settings
         {
             LoadTabsStructure();
             InitializeNavigation();
+
+            if (RootNavigation.PageService is JDKTrap.UI.SimplePageService pageService)
+            {
+                pageService.PreWarmPages(
+                    typeof(HistoryPage),
+                    typeof(IntegrationsPage),
+                    typeof(BehaviourPage),
+                    typeof(AppearancePage),
+                    typeof(ServerBrowserPage),
+                    typeof(FastFlagsPage),
+                    typeof(FastFlagEditorPage),
+                    typeof(GBSEditorPage),
+                    typeof(ModsPage),
+                    typeof(NewsPage),
+                    typeof(ExtensionPage),
+                    typeof(ShortcutsPage),
+                    typeof(ChannelPage)
+                );
+            }
             if (App.Settings.Prop.GRADmentFR)
             {
                 CompositionTarget.Rendering += CompositionTarget_Rendering;
@@ -1586,6 +1611,7 @@ namespace JDKTrap.UI.Elements.Settings
             if (RootNavigation == null)
                 return;
 
+            RootNavigation.PageService = new JDKTrap.UI.SimplePageService();
             RootNavigation.SelectedPageIndex = App.State.Prop.LastPage;
             RootNavigation.Navigated += SaveNavigation;
         }
@@ -1662,6 +1688,19 @@ namespace JDKTrap.UI.Elements.Settings
         private void SaveNavigation(INavigation sender, RoutedNavigationEventArgs e)
         {
             App.State.Prop.LastPage = RootNavigation.SelectedPageIndex;
+            _saveNavigationDebounce?.Stop();
+            _saveNavigationDebounce ??= new DispatcherTimer 
+            { 
+                Interval = TimeSpan.FromMilliseconds(500) 
+            };
+            _saveNavigationDebounce.Tick -= SaveNavigationDebounce_Tick;
+            _saveNavigationDebounce.Tick += SaveNavigationDebounce_Tick;
+            _saveNavigationDebounce.Start();
+        }
+
+        private void SaveNavigationDebounce_Tick(object? sender, EventArgs e)
+        {
+            _saveNavigationDebounce?.Stop();
             UpdateDiscordPresence();
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -30,6 +30,32 @@ namespace JDKTrap.Utility
 
             fileInfo.IsReadOnly = false;
             App.Logger.WriteLine("Filesystem::AssertReadOnly", $"The following file was set as read-only: {filePath}");
+        }
+
+        internal static void CopyAppFiles(string sourceDir, string destDir)
+        {
+            if (string.IsNullOrEmpty(sourceDir) || string.IsNullOrEmpty(destDir))
+                return;
+
+            Directory.CreateDirectory(destDir);
+
+            foreach (var file in Directory.EnumerateFiles(sourceDir, "*.*"))
+            {
+                string ext = Path.GetExtension(file).ToLowerInvariant();
+                if (ext == ".exe" || ext == ".dll" || ext == ".json")
+                {
+                    string destFile = Path.Combine(destDir, Path.GetFileName(file));
+                    try
+                    {
+                        AssertReadOnly(destFile);
+                        File.Copy(file, destFile, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteLine("Filesystem::CopyAppFiles", $"Failed to copy {file} to {destFile}: {ex.Message}");
+                    }
+                }
+            }
         }
 
         internal static void AssertReadOnlyDirectory(string directoryPath)

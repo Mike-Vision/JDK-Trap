@@ -19,16 +19,19 @@ namespace JDKTrap
 {
     public partial class App : Application
     {
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool SetDefaultDllDirectories(uint DirectoryFlags);
+
 #if QA_BUILD
         public const string ProjectName = "JDKTrap-QA";
 #else
         public const string ProjectName = "JDKTrap";
 #endif
         public const string ProjectOwner = "JDKTrap";
-        public const string ProjectRepository = "/jdktrap/JDKTrap/";
-        public const string ProjectDownloadLink = "https://github.com/jdktrap/JDKTrap/releases";
+        public const string ProjectRepository = "/Mike-Vision/JDK-Trap/";
+        public const string ProjectDownloadLink = "https://github.com/Mike-Vision/JDK-Trap/releases";
         public const string ProjectHelpLink = "https://github.com/BloxstrapLabs/Bloxstrap/wiki";
-        public const string ProjectSupportLink = "https://github.com/jdktrap/JDKTrap/issues/new";
+        public const string ProjectSupportLink = "https://github.com/Mike-Vision/JDK-Trap/issues/new";
 
         public const string RobloxPlayerAppName = "RobloxPlayerBeta";
         public const string RobloxStudioAppName = "RobloxStudioBeta";
@@ -207,6 +210,9 @@ namespace JDKTrap
         {
             const string LOG_IDENT = "App::OnStartup";
 
+            // Prevent DLL Hijacking by searching only in the application's base directory and System32
+            try { SetDefaultDllDirectories(0x00000200 | 0x00000800); } catch { }
+
             Locale.Initialize();
             base.OnStartup(e);
 
@@ -316,9 +322,9 @@ namespace JDKTrap
             {
                 Paths.Initialize(installLocation);
 
-                // ensure executable is in the install directory
-                if (Paths.Process != Paths.Application && !File.Exists(Paths.Application))
-                    File.Copy(Paths.Process, Paths.Application);
+                // ensure executable and dependencies are in the install directory
+                if (Paths.Process != Paths.Application)
+                    Utility.Filesystem.CopyAppFiles(Path.GetDirectoryName(Paths.Process)!, Paths.Base);
 
                 Logger.Initialize(LaunchSettings.UninstallFlag.Active);
 

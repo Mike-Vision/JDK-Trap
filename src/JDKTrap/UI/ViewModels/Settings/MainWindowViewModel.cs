@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -91,11 +91,28 @@ namespace JDKTrap.UI.ViewModels.Settings
             RequestSaveNoticeEvent?.Invoke(this, EventArgs.Empty);
         }
 
+        public ICommand UninstallCommand => new RelayCommand(Uninstall);
+
         public void SaveAndLaunchSettings()
         {
             SaveSettings();
             RequestSaveLaunchNoticeEvent?.Invoke(this, EventArgs.Empty);
             LaunchHandler.LaunchRoblox(LaunchMode.Player);
+        }
+
+        private void Uninstall()
+        {
+            var result = Frontend.ShowMessageBox(
+                "Are you sure you want to uninstall JDKTrap?",
+                System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxButton.YesNo
+            );
+
+            if (result == System.Windows.MessageBoxResult.Yes)
+            {
+                System.Diagnostics.Process.Start(Paths.Process, "-uninstall");
+                App.Terminate();
+            }
         }
 
         protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string? propertyName = null)

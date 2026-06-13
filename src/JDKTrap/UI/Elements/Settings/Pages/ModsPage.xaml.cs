@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Drawing;
@@ -34,20 +34,17 @@ namespace JDKTrap.UI.Elements.Settings.Pages
         {
             SetupViewModel();
             InitializeComponent();
-            InitializePreview();
-
-            ViewModel = new ModsViewModel();
-            DataContext = ViewModel;
-
-            Loaded += async (s, e) =>
-            {
-                await ViewModel.InitializeAsync();
-            };
 
             GradientAngleTextBox.Text = "0.0";
             IncludeModificationsCheckBox.IsChecked = true;
 
             ViewModel.GradientStops.Add(new GradientStopViewModel { Offset = 0, ColorHex = "#FFFFFF" });
+
+            Loaded += async (s, e) =>
+            {
+                await ViewModel.InitializeAsync();
+                InitializePreview();
+            };
         }
 
         private void SetupViewModel()
@@ -364,11 +361,11 @@ namespace JDKTrap.UI.Elements.Settings.Pages
         private CancellationTokenSource? _previewCts;
         private readonly List<ModGenerator.SpriteDef> _previewSprites = ParseHardcodedSpriteList();
 
-        private void InitializePreview()
+        private async void InitializePreview()
         {
-            LoadEmbeddedPreviewSheet();
+            await Task.Run(() => LoadEmbeddedPreviewSheet());
             PopulateSpriteSelector();
-            _ = UpdatePreviewAsync();
+            await UpdatePreviewAsync();
         }
 
         private void LoadEmbeddedPreviewSheet()

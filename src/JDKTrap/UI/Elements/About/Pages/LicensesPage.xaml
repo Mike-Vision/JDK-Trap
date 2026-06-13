@@ -36,7 +36,7 @@
                 Grid.Column="0"
                 Margin="0,8,8,0"
                 Command="models:GlobalViewModel.OpenWebpageCommand"
-                CommandParameter="https://github.com/jdktrap/JDKTrap/blob/main/LICENSE.JDKTRAP">
+                CommandParameter="https://github.com/Mike-Vision/JDK-Trap/blob/main/LICENSE.JDKTRAP">
                 <StackPanel>
                     <TextBlock FontSize="14" Text="JDKTrap" />
                     <TextBlock

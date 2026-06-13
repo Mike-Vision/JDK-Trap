@@ -76,9 +76,8 @@ namespace JDKTrap
             "	<BaseUrl>http://www.roblox.com</BaseUrl>\r\n" +
             "</Settings>\r\n";
 
-        private const float CpuHighThreshold = 80f;
-        private const int MinWorkingSetMB = 50;
-        private const int OptimizerIntervalMs = 3000;
+        private const int MinWorkingSetMB = 256;
+        private const int OptimizerIntervalMs = 5000;
 
         #endregion
 
@@ -87,11 +86,18 @@ namespace JDKTrap
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool SetProcessWorkingSetSize(IntPtr handle, IntPtr min, IntPtr max);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
+        [DllImport("ntdll.dll")]
+        private static extern int NtSetInformationProcess(IntPtr handle, int processInformationClass, ref int processInformation, int processInformationLength);
 
-        private const uint PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000;
-        private const uint PROCESS_MODE_BACKGROUND_END = 0x00200000;
+        [DllImport("winmm.dll")]
+        private static extern uint timeBeginPeriod(uint uMilliseconds);
+
+        [DllImport("winmm.dll")]
+        private static extern uint timeEndPeriod(uint uMilliseconds);
+
+        private const int ProcessIoPriority = 33;
+        private const int IO_PRIORITY_HIGH = 3;
+        private const int IO_PRIORITY_NORMAL = 2;
 
         #endregion
 
@@ -120,6 +126,8 @@ namespace JDKTrap
         private AsyncMutex? _mutex;
         private int _appPid = 0;
         private bool _noConnection = false;
+        private bool _systemOptimizationsApplied = false;
+        private bool _timerResolutionIncreased = false;
 
         private static readonly string PackFolder =
             Path.Combine(Paths.Base, "SkyboxPack");
@@ -917,13 +925,13 @@ namespace JDKTrap
         {
             _optimizationCts?.Cancel();
             _optimizationCts = null;
+            RestoreSystemOptimizations();
         }
 
         private async Task OptimizerLoop(CancellationToken token)
         {
             var processNames = new[] { "Roblox", ProcRobloxPlayer, "Roblox Game Client" };
             var optimizedPids = new HashSet<int>();
-            var cpuCounters = new Dictionary<int, PerformanceCounter>();
 
             while (!token.IsCancellationRequested)
             {
@@ -938,8 +946,19 @@ namespace JDKTrap
 
                     if (robloxProcesses.Count == 0)
                     {
+                        // Nếu trước đó đã tối ưu nhưng giờ không còn process Roblox → khôi phục hệ thống
+                        if (_systemOptimizationsApplied)
+                        {
+                            RestoreSystemOptimizations();
+                        }
                         await Task.Delay(5000, token);
                         continue;
+                    }
+
+                    // Áp dụng tối ưu hệ thống (Power Plan, Timer Resolution) chỉ 1 lần
+                    if (!_systemOptimizationsApplied)
+                    {
+                        ApplySystemOptimizations();
                     }
 
                     foreach (var proc in robloxProcesses)
@@ -950,24 +969,26 @@ namespace JDKTrap
                             {
                                 ApplyRuntimeOptimizations(proc);
                                 optimizedPids.Add(proc.Id);
+                                App.Logger.WriteLine("Optimizer",
+                                    $"Applied all optimizations to {proc.ProcessName} (PID {proc.Id})");
                             }
-
-                            SetProcessWorkingSetSize(proc.Handle, (IntPtr)(-1), (IntPtr)(-1));
-                            await MonitorProcessCpu(proc, cpuCounters, token);
                         }
                         catch (Exception ex) when (!token.IsCancellationRequested)
                         {
                             App.Logger.WriteLine("Optimizer", $"[PID {proc.Id}] {ex.Message}");
                         }
+                        finally
+                        {
+                            proc.Dispose();
+                        }
                     }
 
-                    optimizedPids.RemoveWhere(pid => robloxProcesses.All(p => p.Id != pid));
-                    foreach (var pid in cpuCounters.Keys.Except(
-                        robloxProcesses.Select(p => p.Id)).ToList())
+                    // Dọn PID đã thoát
+                    optimizedPids.RemoveWhere(pid =>
                     {
-                        cpuCounters[pid].Dispose();
-                        cpuCounters.Remove(pid);
-                    }
+                        try { using var p = Process.GetProcessById(pid); return p.HasExited; }
+                        catch { return true; }
+                    });
 
                     await Task.Delay(OptimizerIntervalMs, token);
                 }
@@ -978,7 +999,7 @@ namespace JDKTrap
                 }
             }
 
-            foreach (var c in cpuCounters.Values) c.Dispose();
+            RestoreSystemOptimizations();
             App.Logger.WriteLine("Optimizer", "Stopped.");
         }
 
@@ -991,15 +1012,34 @@ namespace JDKTrap
                 { App.Logger.WriteLine("Optimizer", $"Failed to {desc}: {ex.Message}"); }
             }
 
+            // 1. Process Priority → High (không dùng Realtime để tránh hệ thống freeze)
+            Safe(() => process.PriorityClass = ProcessPriorityClass.High, "set priority to High");
+            Safe(() => process.PriorityBoostEnabled = true, "enable priority boost");
+
+            // 2. I/O Priority → High (giúp asset loading nhanh hơn đáng kể)
+            Safe(() =>
+            {
+                int ioPriority = IO_PRIORITY_HIGH;
+                NtSetInformationProcess(process.Handle, ProcessIoPriority, ref ioPriority, sizeof(int));
+            }, "set I/O priority to High");
+
+            // 3. CPU Affinity → tất cả core (đảm bảo Roblox được dùng hết CPU)
             int cores = Environment.ProcessorCount;
             long affinityMask = cores >= 64 ? -1L : (1L << cores) - 1;
+            Safe(() => process.ProcessorAffinity = (IntPtr)affinityMask, "set CPU affinity to all cores");
 
-            Safe(() => process.ProcessorAffinity = (IntPtr)affinityMask, "set CPU affinity");
-
+            // 4. Working Set bounds → đảm bảo Roblox được giữ trong RAM, KHÔNG bị trim ra pagefile
             ulong totalMem = new ComputerInfo().TotalPhysicalMemory;
+            long minWS = totalMem switch
+            {
+                var t when t > 32UL * 1024 * 1024 * 1024 => 512L * 1024 * 1024,   // >32GB RAM → min 512MB
+                var t when t > 16UL * 1024 * 1024 * 1024 => 384L * 1024 * 1024,   // >16GB RAM → min 384MB
+                var t when t > 8UL * 1024 * 1024 * 1024 => 256L * 1024 * 1024,    // >8GB RAM  → min 256MB
+                _ => 128L * 1024 * 1024                                             // ≤8GB RAM  → min 128MB
+            };
             long maxWS = totalMem switch
             {
-                var t when t > 64UL * 1024 * 1024 * 1024 => 32L * 1024 * 1024 * 1024,
+                var t when t > 64UL * 1024 * 1024 * 1024 => 32L * 1024 * 1024 * 1024,   // 50% giới hạn tối đa
                 var t when t > 32UL * 1024 * 1024 * 1024 => 16L * 1024 * 1024 * 1024,
                 var t when t > 16UL * 1024 * 1024 * 1024 => 8L * 1024 * 1024 * 1024,
                 var t when t > 8UL * 1024 * 1024 * 1024 => 4L * 1024 * 1024 * 1024,
@@ -1008,43 +1048,169 @@ namespace JDKTrap
 
             Safe(() =>
             {
+                // Đặt giới hạn working set hợp lý — KHÔNG trim, chỉ đặt bounds
+                process.MinWorkingSet = new IntPtr(minWS);
                 process.MaxWorkingSet = new IntPtr(Math.Min(maxWS, (long)IntPtr.MaxValue));
-                process.MinWorkingSet = new IntPtr(MinWorkingSetMB * 1024 * 1024);
-            }, "set working set");
-
-            App.Logger.WriteLine("Optimizer",
-                $"Applied to {process.ProcessName} (PID {process.Id})");
+            }, "set working set bounds");
         }
 
-        private static async Task MonitorProcessCpu(
-            Process process,
-            Dictionary<int, PerformanceCounter> cpuCounters,
-            CancellationToken token)
+        /// <summary>
+        /// Tối ưu hệ thống 1 lần khi phát hiện Roblox chạy:
+        /// - Power Plan → High Performance
+        /// - Timer Resolution → 1ms (giảm input lag)
+        /// - Giảm ưu tiên tiến trình nền gây nhiễu
+        /// </summary>
+        private void ApplySystemOptimizations()
         {
+            const string LOG_IDENT = "Optimizer::SystemOpt";
+
             try
             {
-                process.Refresh();
-
-                if (!cpuCounters.ContainsKey(process.Id))
+                // 1. Chuyển Windows Power Plan → High Performance
+                try
                 {
-                    var ctr = new PerformanceCounter(
-                        "Process", "% Processor Time", process.ProcessName, true);
-                    ctr.NextValue();
-                    cpuCounters[process.Id] = ctr;
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "powercfg",
+                        Arguments = "/S 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c",
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    using var p = Process.Start(psi);
+                    p?.WaitForExit(3000);
+                    App.Logger.WriteLine(LOG_IDENT, "Power Plan set to High Performance.");
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Failed to set power plan: {ex.Message}");
                 }
 
-                await Task.Delay(300, token);
+                // 2. Timer Resolution → 1ms (giảm scheduling latency & input lag)
+                try
+                {
+                    timeBeginPeriod(1);
+                    _timerResolutionIncreased = true;
+                    App.Logger.WriteLine(LOG_IDENT, "Timer resolution set to 1ms.");
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Failed to set timer resolution: {ex.Message}");
+                }
 
-                float cpu = cpuCounters[process.Id].NextValue() / Environment.ProcessorCount;
-                if (cpu > CpuHighThreshold)
-                    process.PriorityClass = ProcessPriorityClass.AboveNormal;
+                // 3. Giảm ưu tiên các tiến trình nền gây nhiễu CPU/Disk
+                var backgroundProcesses = new[] { "SearchIndexer", "OneDrive", "WmiPrvSE", "SearchProtocolHost" };
+                foreach (var name in backgroundProcesses)
+                {
+                    try
+                    {
+                        var procs = Process.GetProcessesByName(name);
+                        foreach (var proc in procs)
+                        {
+                            try
+                            {
+                                if (!proc.HasExited)
+                                {
+                                    proc.PriorityClass = ProcessPriorityClass.BelowNormal;
+                                    App.Logger.WriteLine(LOG_IDENT,
+                                        $"Lowered priority of {name} (PID {proc.Id}) to BelowNormal.");
+                                }
+                            }
+                            catch { }
+                            finally { proc.Dispose(); }
+                        }
+                    }
+                    catch { }
+                }
 
-                try { process.PriorityBoostEnabled = true; } catch { }
-                SetPriorityClass(process.Handle, PROCESS_MODE_BACKGROUND_END);
+                // 4. Dọn standby list 1 lần trước khi chơi
+                RobloxMemoryCleaner.FreeSystemStandbyList();
+                App.Logger.WriteLine(LOG_IDENT, "System standby list cleared.");
+
+                _systemOptimizationsApplied = true;
+                App.Logger.WriteLine(LOG_IDENT, "All system optimizations applied successfully.");
             }
-            catch (Exception ex) when (!token.IsCancellationRequested)
+            catch (Exception ex)
             {
-                App.Logger.WriteLine("Optimizer", $"[CPU monitor PID {process.Id}] {ex.Message}");
+                App.Logger.WriteLine(LOG_IDENT, $"System optimization error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Khôi phục các thiết lập hệ thống khi Roblox thoát hoặc Optimizer dừng.
+        /// </summary>
+        private void RestoreSystemOptimizations()
+        {
+            if (!_systemOptimizationsApplied) return;
+
+            const string LOG_IDENT = "Optimizer::RestoreOpt";
+
+            try
+            {
+                // 1. Khôi phục Power Plan → Balanced
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "powercfg",
+                        Arguments = "/S 381b4222-f694-41f0-9685-ff5bb260df2e",
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    using var p = Process.Start(psi);
+                    p?.WaitForExit(3000);
+                    App.Logger.WriteLine(LOG_IDENT, "Power Plan restored to Balanced.");
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Failed to restore power plan: {ex.Message}");
+                }
+
+                // 2. Khôi phục Timer Resolution
+                if (_timerResolutionIncreased)
+                {
+                    try
+                    {
+                        timeEndPeriod(1);
+                        _timerResolutionIncreased = false;
+                        App.Logger.WriteLine(LOG_IDENT, "Timer resolution restored.");
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, $"Failed to restore timer resolution: {ex.Message}");
+                    }
+                }
+
+                // 3. Khôi phục ưu tiên tiến trình nền
+                var backgroundProcesses = new[] { "SearchIndexer", "OneDrive", "WmiPrvSE", "SearchProtocolHost" };
+                foreach (var name in backgroundProcesses)
+                {
+                    try
+                    {
+                        var procs = Process.GetProcessesByName(name);
+                        foreach (var proc in procs)
+                        {
+                            try
+                            {
+                                if (!proc.HasExited)
+                                    proc.PriorityClass = ProcessPriorityClass.Normal;
+                            }
+                            catch { }
+                            finally { proc.Dispose(); }
+                        }
+                    }
+                    catch { }
+                }
+
+                _systemOptimizationsApplied = false;
+                App.Logger.WriteLine(LOG_IDENT, "All system optimizations restored.");
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine(LOG_IDENT, $"Restore error: {ex.Message}");
             }
         }
 
@@ -1844,6 +2010,10 @@ namespace JDKTrap
             const string LOG_IDENT = "Bootstrapper::ApplyModifications";
             SetStatus(Strings.Bootstrapper_Status_ApplyingModifications);
 
+            // Áp dụng FastFlags tối ưu hiệu năng nếu OptimizeRoblox = true
+            App.FastFlags.ApplyOptimizationFlags();
+            App.FastFlags.Save();
+
             File.Delete(Path.Combine(Paths.Base, "ModManifest.txt"));
             Directory.CreateDirectory(Paths.Mods);
 
@@ -2052,16 +2222,24 @@ namespace JDKTrap
 
             using (var zip = System.IO.Compression.ZipFile.OpenRead(tempZip))
             {
+                string packFolderFullPath = Path.GetFullPath(PackFolder);
                 foreach (var entry in zip.Entries)
                 {
                     if (string.IsNullOrEmpty(entry.Name)) continue;
 
                     var parts = entry.FullName.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
                     string dest = Path.Combine(PackFolder, Path.Combine(parts.Skip(1).ToArray()));
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                    string destFullPath = Path.GetFullPath(dest);
+
+                    if (!destFullPath.StartsWith(packFolderFullPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new System.Security.SecurityException($"Phát hiện hành vi di chuyển thư mục không hợp lệ (Zip Slip) đối với tệp: {entry.FullName}");
+                    }
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(destFullPath)!);
 
                     using var es = entry.Open();
-                    using var fs = new FileStream(dest, FileMode.Create, FileAccess.Write);
+                    using var fs = new FileStream(destFullPath, FileMode.Create, FileAccess.Write);
                     await es.CopyToAsync(fs);
                 }
             }

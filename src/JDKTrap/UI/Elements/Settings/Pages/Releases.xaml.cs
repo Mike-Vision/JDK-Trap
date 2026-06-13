@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -23,7 +23,7 @@ namespace JDKTrap.UI.Elements.Settings.Pages
     public partial class ReleasesPage
     {
         private static readonly Uri ReleasesApiUri =
-            new("https://api.github.com/repos/jdktrap/JDKTrap/releases");
+            new("https://api.github.com/repos/Mike-Vision/JDK-Trap/releases");
 
         private static readonly HttpClient HttpClient = CreateHttpClient();
         private static readonly string CacheFile =
@@ -40,11 +40,13 @@ namespace JDKTrap.UI.Elements.Settings.Pages
         {
             var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
             client.DefaultRequestHeaders.UserAgent.ParseAdd(
-                "JDKTrapApp/1.0 (+https://github.com/jdktrap/JDKTrap)");
+                "JDKTrapApp/1.0 (+https://github.com/Mike-Vision/JDK-Trap)");
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
             return client;
         }
+
+        private System.Threading.CancellationTokenSource? _refreshCts;
 
         public ReleasesPage()
         {
@@ -55,26 +57,46 @@ namespace JDKTrap.UI.Elements.Settings.Pages
 
             Directory.CreateDirectory(Path.GetDirectoryName(CacheFile)!);
 
-            StartCacheWatcher();
-            StartAutoRefresh();
+            Loaded += (s, e) =>
+            {
+                _refreshCts?.Cancel();
+                _refreshCts = new System.Threading.CancellationTokenSource();
+                StartCacheWatcher();
+                StartAutoRefresh(_refreshCts.Token);
+                _ = LoadReleasesAsync(force: true);
+            };
 
-            _ = LoadReleasesAsync(force: true);
+            Unloaded += (s, e) =>
+            {
+                _refreshCts?.Cancel();
+                _refreshCts = null;
+                StopCacheWatcher();
+            };
         }
 
-        private void StartAutoRefresh()
+        private void StartAutoRefresh(System.Threading.CancellationToken ct)
         {
-            _ = Task.Run(async () =>
+            Task.Run(async () =>
             {
-                while (true)
+                while (!ct.IsCancellationRequested)
                 {
-                    await Task.Delay(_refreshInterval);
-                    await LoadReleasesAsync();
+                    try
+                    {
+                        await Task.Delay(_refreshInterval, ct);
+                        await LoadReleasesAsync();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch { }
                 }
             });
         }
 
         private void StartCacheWatcher()
         {
+            if (_cacheWatcher != null) return;
             _cacheWatcher = new FileSystemWatcher
             {
                 Path = Path.GetDirectoryName(CacheFile)!,
@@ -91,6 +113,16 @@ namespace JDKTrap.UI.Elements.Settings.Pages
                 await LoadFromCacheAsync());
 
             _cacheWatcher.EnableRaisingEvents = true;
+        }
+
+        private void StopCacheWatcher()
+        {
+            if (_cacheWatcher != null)
+            {
+                _cacheWatcher.EnableRaisingEvents = false;
+                _cacheWatcher.Dispose();
+                _cacheWatcher = null;
+            }
         }
 
         private async Task LoadReleasesAsync(bool force = false)

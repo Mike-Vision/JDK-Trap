@@ -24,7 +24,7 @@ namespace JDKTrap.UI.Elements.Dialogs
                 LocateLogFileButton.Content = Strings.Dialog_Exception_CopyLogContents;
 
             string repoUrl = $"https://github.com/{App.ProjectRepository}";
-            string wikiUrl = $"https://jdktrapp.netlify.app/documentation/documentation";
+            string wikiUrl = $"https://boisterous-souffle-33150b.netlify.app/documentation/documentation";
 
             string title = HttpUtility.UrlEncode($"[BUG] {exception.GetType()}: {exception.Message}");
             string log = HttpUtility.UrlEncode(

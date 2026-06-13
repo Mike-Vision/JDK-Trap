@@ -216,7 +216,18 @@ public sealed class AggressivePerformanceManager : IDisposable
                 var procs = Process.GetProcessesByName(name);
                 if (procs != null && procs.Length > 0)
                 {
-                    var choose = procs.FirstOrDefault(p => !p.HasExited);
+                    Process? choose = null;
+                    foreach (var p in procs)
+                    {
+                        if (choose == null && !p.HasExited)
+                        {
+                            choose = p;
+                        }
+                        else
+                        {
+                            p.Dispose();
+                        }
+                    }
                     if (choose != null) return choose;
                 }
             }
@@ -264,23 +275,30 @@ public sealed class AggressivePerformanceManager : IDisposable
 
             const string wmiClass = "Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine";
             using var searcher = new ManagementObjectSearcher($"SELECT Name, UtilizationPercentage FROM {wmiClass}");
-            var results = searcher.Get();
+            using var results = searcher.Get();
             if (results == null || results.Count == 0) return -1;
 
             int total = 0, count = 0;
             foreach (ManagementObject mo in results)
             {
-                var nameObj = mo["Name"] ?? mo["InstanceName"] ?? mo["Caption"];
-                if (nameObj == null) continue;
-                string name = nameObj.ToString();
-                if (name.IndexOf($"pid_{pid}", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    name.IndexOf($"pid:{pid}", StringComparison.OrdinalIgnoreCase) >= 0)
+                try
                 {
-                    if (int.TryParse(mo["UtilizationPercentage"]?.ToString() ?? "0", out int util))
+                    var nameObj = mo["Name"] ?? mo["InstanceName"] ?? mo["Caption"];
+                    if (nameObj == null) continue;
+                    string name = nameObj.ToString();
+                    if (name.IndexOf($"pid_{pid}", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf($"pid:{pid}", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        total += util;
-                        count++;
+                        if (int.TryParse(mo["UtilizationPercentage"]?.ToString() ?? "0", out int util))
+                        {
+                            total += util;
+                            count++;
+                        }
                     }
+                }
+                finally
+                {
+                    mo.Dispose();
                 }
             }
 
@@ -370,18 +388,26 @@ public sealed class AggressivePerformanceManager : IDisposable
             if (proc == null || proc.HasExited) return;
 
             var desired = elevateToRealtime ? ProcessPriorityClass.RealTime : ProcessPriorityClass.High;
-            foreach (var p in Process.GetProcessesByName(proc.ProcessName))
+            var processes = Process.GetProcessesByName(proc.ProcessName);
+            try
             {
-                try
+                foreach (var p in processes)
                 {
-                    if (p.HasExited) continue;
-                    p.PriorityClass = desired;
-                    Log($"Set process {p.Id} priority to {desired}.");
+                    try
+                    {
+                        if (p.HasExited) continue;
+                        p.PriorityClass = desired;
+                        Log($"Set process {p.Id} priority to {desired}.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Cannot set priority for PID {p.Id}: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Log($"Cannot set priority for PID {p.Id}: {ex.Message}");
-                }
+            }
+            finally
+            {
+                foreach (var p in processes) p.Dispose();
             }
         }
         catch (Exception ex)
@@ -396,18 +422,26 @@ public sealed class AggressivePerformanceManager : IDisposable
         {
             foreach (var name in _targetProcessNames)
             {
-                foreach (var p in Process.GetProcessesByName(name))
+                var processes = Process.GetProcessesByName(name);
+                try
                 {
-                    try
+                    foreach (var p in processes)
                     {
-                        if (p.HasExited) continue;
-                        p.PriorityClass = ProcessPriorityClass.Normal;
-                        Log($"Restored PID {p.Id} priority to Normal.");
+                        try
+                        {
+                            if (p.HasExited) continue;
+                            p.PriorityClass = ProcessPriorityClass.Normal;
+                            Log($"Restored PID {p.Id} priority to Normal.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"Normalize priority error for PID {p.Id}: {ex.Message}");
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        Log($"Normalize priority error for PID {p.Id}: {ex.Message}");
-                    }
+                }
+                finally
+                {
+                    foreach (var p in processes) p.Dispose();
                 }
             }
         }

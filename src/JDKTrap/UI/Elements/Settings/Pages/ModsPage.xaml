@@ -92,7 +92,7 @@
             Margin="0,0,0,16"
             Text="{x:Static resources:Strings.Common_Presets}" />
 
-                    <ui:CardAction Grid.Row="0" Grid.Column="0" Icon="DocumentTextToolbox20" Command="models:GlobalViewModel.OpenWebpageCommand" CommandParameter="https://jdktrapp.netlify.app/mods/mods">
+                    <ui:CardAction Grid.Row="0" Grid.Column="0" Icon="DocumentTextToolbox20" Command="models:GlobalViewModel.OpenWebpageCommand" CommandParameter="https://boisterous-souffle-33150b.netlify.app/mods/mods">
                         <StackPanel>
                             <TextBlock FontSize="14" Text="Find Mods" FontWeight="Medium" />
                             <TextBlock Margin="0,2,0,0" FontSize="12" Text="Search for Mods on the JDKTrap Website." Padding="0,0,16,0"  Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
@@ -127,7 +127,7 @@
             Grid.Column="0"
             Icon="CursorHover24"
             Command="models:GlobalViewModel.OpenWebpageCommand"
-            CommandParameter="https://jdktrapp.netlify.app/crosshairs/crosshairs">
+            CommandParameter="https://boisterous-souffle-33150b.netlify.app/crosshairs/crosshairs">
 
                                         <StackPanel>
                                             <TextBlock

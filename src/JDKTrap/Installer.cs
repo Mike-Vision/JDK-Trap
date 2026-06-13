@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using JDKTrap;
 using Microsoft.Win32;
 
@@ -49,11 +49,11 @@ namespace JDKTrap
 
                 try
                 {
-                    File.Copy(Paths.Process, Paths.Application, true);
+                    Filesystem.CopyAppFiles(Path.GetDirectoryName(Paths.Process)!, InstallLocation);
                 }
                 catch (Exception ex)
                 {
-                    App.Logger.WriteLine(LOG_IDENT, "Could not overwrite executable");
+                    App.Logger.WriteLine(LOG_IDENT, "Could not overwrite application files");
                     App.Logger.WriteException(LOG_IDENT, ex);
 
                     Frontend.ShowMessageBox(Strings.Installer_Install_CannotOverwrite, MessageBoxImage.Error);
@@ -217,6 +217,7 @@ namespace JDKTrap
 
                 if (result != MessageBoxResult.OK)
                 {
+                    foreach (var process in processes) process.Dispose();
                     App.Terminate(ErrorCode.ERROR_CANCELLED);
                     return;
                 }
@@ -226,7 +227,7 @@ namespace JDKTrap
                     foreach (var process in processes)
                     {
                         process.Kill();
-                        process.Close();
+                        process.Dispose();
                     }
                 }
                 catch (Exception ex)

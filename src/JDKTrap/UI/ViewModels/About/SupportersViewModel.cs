@@ -42,7 +42,7 @@ namespace JDKTrap.UI.ViewModels.About
 
             try
             {
-                SupporterData = await Http.GetJson<SupporterData>("https://raw.githubusercontent.com/jdktrap/JDKTrap/main/supportersdata7.json");
+                SupporterData = await Http.GetJson<SupporterData>("https://raw.githubusercontent.com/Mike-Vision/JDK-Trap/main/supportersdata7.json");
             }
             catch (Exception ex)
             {

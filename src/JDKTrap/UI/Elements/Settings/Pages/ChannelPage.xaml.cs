@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows;
 using JDKTrap.UI.Elements.Dialogs;
 using JDKTrap.UI.ViewModels.Settings;
@@ -13,11 +14,25 @@ namespace JDKTrap.UI.Elements.Settings.Pages
 {
     public partial class ChannelPage
     {
+        private CancellationTokenSource? _updateCts;
+
         public ChannelPage()
         {
             InitializeComponent();
-            _ = AutoUpdateRobloxVersionAsync();
             DataContext = new ChannelViewModel();
+
+            Loaded += (s, e) =>
+            {
+                _updateCts?.Cancel();
+                _updateCts = new CancellationTokenSource();
+                _ = AutoUpdateRobloxVersionAsync(_updateCts.Token);
+            };
+
+            Unloaded += (s, e) =>
+            {
+                _updateCts?.Cancel();
+                _updateCts = null;
+            };
         }
 
         private void ToggleSwitch_Checked_1(object sender, RoutedEventArgs e)
@@ -38,9 +53,9 @@ namespace JDKTrap.UI.Elements.Settings.Pages
             );
         }
 
-        private async Task AutoUpdateRobloxVersionAsync()
+        private async Task AutoUpdateRobloxVersionAsync(CancellationToken ct)
         {
-            while (true)
+            while (!ct.IsCancellationRequested)
             {
                 try
                 {
@@ -50,7 +65,14 @@ namespace JDKTrap.UI.Elements.Settings.Pages
                 {
                     Debug.WriteLine($"[AutoUpdate] Error updating Roblox version: {ex.Message}");
                 }
-                await Task.Delay(1000);
+                try
+                {
+                    await Task.Delay(5000, ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
 
@@ -199,7 +221,7 @@ namespace JDKTrap.UI.Elements.Settings.Pages
                     Frontend.ShowMessageBox(
                         $"A new version ({latestVersion}) is available!"
                     );
-                    string exeUrl = "https://github.com/jdktrap/JDKTrap/releases/latest/download/jdktrap.exe";
+                    string exeUrl = "https://github.com/Mike-Vision/JDK-Trap/releases/latest/download/jdktrap.exe";
                     string tempPath = Path.Combine(Path.GetTempPath(), "jdktrap_update.exe");
 
                     using (var client = new HttpClient())
@@ -235,7 +257,7 @@ namespace JDKTrap.UI.Elements.Settings.Pages
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("User-Agent", "JDKTrap-Updater");
 
-            string apiUrl = "https://api.github.com/repos/jdktrap/JDKTrap/releases/latest";
+            string apiUrl = "https://api.github.com/repos/Mike-Vision/JDK-Trap/releases/latest";
             string json = await client.GetStringAsync(apiUrl);
 
             using var doc = JsonDocument.Parse(json);
@@ -286,7 +308,7 @@ namespace JDKTrap.UI.Elements.Settings.Pages
 
         private void DonateButton_Click(object sender, RoutedEventArgs e)
         {
-            string url = "https://jdktrapp.netlify.app/donate/donate";
+            string url = "https://boisterous-souffle-33150b.netlify.app/donate/donate";
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo

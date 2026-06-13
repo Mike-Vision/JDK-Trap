@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -119,10 +119,7 @@ namespace JDKTrap.UI.Elements.Settings.Pages
             }
             catch (Exception ex)
             {
-                Frontend.ShowMessageBox(
-                    $"Failed to download custom theme:\n{ex.Message}",
-                    MessageBoxImage.Warning
-                );
+                App.Logger.WriteException("AppearancePage::DownloadCustomThemeAsync", ex);
             }
         }
 

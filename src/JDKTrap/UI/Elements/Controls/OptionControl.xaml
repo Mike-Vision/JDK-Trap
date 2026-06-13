@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="JDKTrap.UI.Elements.Controls.OptionControl"
     x:Name="RootControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -28,17 +28,17 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock
-    Grid.Column="0"
-    FontSize="14"
-    Text="{Binding Header, RelativeSource={RelativeSource AncestorType=UserControl}, TargetNullValue=''}" />
+                        x:Name="HeaderTextBlock"
+                        Grid.Column="0"
+                        FontSize="14" />
 
                     <TextBlock
+                        x:Name="HelpLinkContainer"
                         Grid.Column="1"
-                        Margin="4,0,0,0"
-                        Visibility="{Binding HelpLink, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NullOrEmptyToVisibilityConverter}}">
+                        Margin="4,0,0,0">
                         <Hyperlink
+                            x:Name="HelpHyperlink"
                             Command="{x:Static models:GlobalViewModel.OpenWebpageCommand}"
-                            CommandParameter="{Binding HelpLink, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             TextDecorations="None"
                             ToolTip="{x:Static resources:Strings.Menu_MoreInfo}">
                             <ui:SymbolIcon Margin="0,1,0,0" Symbol="QuestionCircle48"/>
@@ -47,12 +47,11 @@
                 </Grid>
 
                 <local:MarkdownTextBlock
+                    x:Name="DescriptionTextBlock"
                     Margin="0,2,0,0"
                     FontSize="12"
                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                    TextWrapping="Wrap"
-                    MarkdownText="{Binding Description, RelativeSource={RelativeSource AncestorType=UserControl}, TargetNullValue=''}"
-                    Visibility="{Binding Description, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NullOrEmptyToVisibilityConverter}}"/>
+                    TextWrapping="Wrap" />
             </StackPanel>
         </ui:CardControl.Header>
 
@@ -66,10 +65,10 @@
                 <Border Grid.Column="0"/>
 
                 <ContentPresenter
+                    x:Name="InnerContentPresenter"
                     Grid.Column="1"
                     Margin="16,0,0,0"
-                    VerticalAlignment="Center"
-                    Content="{Binding InnerContent, RelativeSource={RelativeSource AncestorType=UserControl}, TargetNullValue=''}"/>
+                    VerticalAlignment="Center" />
             </Grid>
         </ui:CardControl.Content>
 

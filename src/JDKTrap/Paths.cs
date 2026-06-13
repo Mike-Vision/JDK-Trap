@@ -1,4 +1,4 @@
-﻿namespace JDKTrap
+namespace JDKTrap
 {
     static class Paths
     {
@@ -42,6 +42,9 @@
                 throw new ArgumentException("Base directory cannot be null or empty.", nameof(baseDirectory));
 
             Base = baseDirectory;
+
+            RobloxLogs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roblox", "logs");
+            RobloxCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "Roblox");
 
             Downloads = Path.Combine(Base, "Downloads");
             SavedBackups = Path.Combine(Base, "SavedBackups");

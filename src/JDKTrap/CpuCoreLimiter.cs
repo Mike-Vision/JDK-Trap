@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -27,7 +27,8 @@ namespace JDKTrap
             try
             {
                 long affinityMask = 0;
-                for (int i = 0; i < coreCount; i++)
+                int safeCoreCount = Math.Min(coreCount, 64);
+                for (int i = 0; i < safeCoreCount; i++)
                 {
                     affinityMask |= 1L << i;
                 }

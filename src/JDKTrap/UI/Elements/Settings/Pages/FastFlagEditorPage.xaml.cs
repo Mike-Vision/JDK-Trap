@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -299,7 +299,7 @@ namespace JDKTrap.UI.Elements.Settings.Pages
                 App.FastFlags.LoadBackup(dialog.LoadBackup.SelectedValue.ToString(), dialog.ClearFlags.IsChecked);
             }
 
-            Thread.Sleep(1000);
+            await Task.Delay(1000);
             ReloadList();
             await LoadKnownFlagsAsync();
             UpdateExistsColumn();

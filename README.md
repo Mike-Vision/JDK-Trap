@@ -1,20 +1,15 @@
 <p align="center">
 <a href="https://jdktrapp.netlify.app/">
-<img src="https://raw.githubusercontent.com/jdktrap/JDKTrap/main/Bloxstrap/JDKTrap.png" alt="preview" width="100px"/>
+<img src="https://raw.githubusercontent.com/Mike-Vision/JDK-Trap/main/src/JDKTrap/JDKTrap.png" alt="preview" width="100px"/>
 </a>
 </p>
 
 <h1 align="center"><b>JDKTrap</b></h1>
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/KloBraticc/RandomMods/main/Untitled%20design%20(2)-Photoroom.png" alt="preview" width="100%"/>
-</p>
-
-<p align="center">
-  <a href="https://github.com/jdktrap/JDKTrap/releases/latest">Latest release</a> |
+  <a href="https://github.com/Mike-Vision/JDK-Trap/releases/latest">Latest release</a> |
   <a href="https://www.youtube.com/watch?v=P-GqTUo_HIA&t">Tutorial</a> |
-  <a href="https://jdktrapp.netlify.app/donate/donate">Donate</a> |
-  <a href="https://discord.gg/5tJBqBH8ck">Discord</a>
+  <a href="https://jdktrapp.netlify.app/donate/donate">Donate</a>
 </p>
 
 <div align="center">
@@ -22,7 +17,6 @@
 [![Total Downloads][shield-repo-total]][repo-releases]
 [![Latest Downloads][shield-repo-downloads]][repo-latest]
 [![Latest Release][shield-repo-latest]][repo-latest]
-[![Discord][shield-discord-server]][discord-invite]
 [![Stars][shield-repo-stars]][repo-stargazers]
 
 </div>
@@ -41,7 +35,7 @@ Leave a star if you like the project! ⭐️
 ## Installation
 
 1. Download the latest version
-   👉 https://github.com/jdktrap/JDKTrap/releases/latest
+   👉 https://github.com/Mike-Vision/JDK-Trap/releases/latest
 2. Run the Exe and Finish the setup
 3. Launch JDKTrap
 4. Enjoy a more simple Roblox
@@ -68,7 +62,7 @@ Leave a star if you like the project! ⭐️
   If your antivirus flags it, it is most likely a false positive due to how launchers interact with Roblox processes and updates.
 
   You can verify the source code yourself at:
-  https://github.com/jdktrap/JDKTrap
+  https://github.com/Mike-Vision/JDK-Trap
   or just scroll up dummy <!-- hada add this -->
 </details>
 
@@ -87,7 +81,7 @@ JDKTrap is built using **C# and .NET**
 ### Fork the Repository
 
 1. Go to:  
-   https://github.com/jdktrap/JDKTrap
+   https://github.com/Mike-Vision/JDK-Trap
 2. Click **Fork** (top right)
 3. This creates your own copy under your GitHub account
 
@@ -97,39 +91,31 @@ Built on top of [Bloxstrap](https://github.com/bloxstraplabs/bloxstrap) by pizza
 <table style="width: 100%; border-collapse: collapse;">
   <tr>
     <td style="width: 33%; text-align: left;">© JDKTrap</td>
-    <td style="width: 33%; text-align: right;"><a href="https://github.com/jdktrap/JDKTrap/blob/main/LICENSE.JDKTRAP" target="_blank">MIT</a></td>
+    <td style="width: 33%; text-align: right;"><a href="https://github.com/Mike-Vision/JDK-Trap/blob/main/LICENSE.JDKTRAP" target="_blank">MIT</a></td>
   </tr>
 </table>
 
 ## Star History
 
 <p align="center">
-  <a href="https://www.star-history.com/?repos=jdktrap%2FJDKTrap%2CKloBraticc%2Fjdktrap&type=timeline&legend=top-left">
-    <img src="https://api.star-history.com/svg?repos=jdktrap%2FJDKTrap%2CKloBraticc%2Fjdktrap&type=timeline&legend=top-left&theme=dark" />
+  <a href="https://www.star-history.com/?repos=Mike-Vision/JDK-Trap&type=timeline&legend=top-left">
+    <img src="https://api.star-history.com/svg?repos=Mike-Vision/JDK-Trap&type=timeline&legend=top-left&theme=dark" />
   </a>
 </p>
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/jdktrap/JDKTrap/output/github-contribution-grid-snake-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/jdktrap/JDKTrap/output/github-contribution-grid-snake.svg">
-    <img alt="WH MY POOKIES" src="https://raw.githubusercontent.com/jdktrap/JDKTrap/output/github-contribution-grid-snake.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Mike-Vision/JDK-Trap/output/github-contribution-grid-snake-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Mike-Vision/JDK-Trap/output/github-contribution-grid-snake.svg">
+    <img alt="WH MY POOKIES" src="https://raw.githubusercontent.com/Mike-Vision/JDK-Trap/output/github-contribution-grid-snake.svg">
   </picture>
 </p>
 
-<p align="center">
-  <a href="https://discord.gg/5tJBqBH8ck">
-    <img src="https://invidget.switchblade.xyz/5tJBqBH8ck">
-  </a>
-</p>
+[shield-repo-downloads]:  https://img.shields.io/github/downloads/Mike-Vision/JDK-Trap/latest/total?color=981bfe
+[shield-repo-total]:      https://img.shields.io/github/downloads/Mike-Vision/JDK-Trap/total?color=8a2be2
+[shield-repo-latest]:     https://img.shields.io/github/v/release/Mike-Vision/JDK-Trap?color=7a39fb
+[shield-repo-stars]:      https://img.shields.io/github/stars/Mike-Vision/JDK-Trap?color=ffd700
 
-[shield-repo-downloads]:  https://img.shields.io/github/downloads/jdktrap/JDKTrap/latest/total?color=981bfe
-[shield-repo-total]:      https://img.shields.io/github/downloads/jdktrap/JDKTrap/total?color=8a2be2
-[shield-repo-latest]:     https://img.shields.io/github/v/release/jdktrap/JDKTrap?color=7a39fb
-[shield-repo-stars]:      https://img.shields.io/github/stars/jdktrap/JDKTrap?color=ffd700
-[shield-discord-server]:  https://img.shields.io/discord/1327967202015580223?logo=discord&logoColor=white&label=Discord&color=4d3dff
-
-[repo-releases]:          https://github.com/jdktrap/JDKTrap/releases
-[repo-latest]:            https://github.com/jdktrap/JDKTrap/releases/latest
-[repo-stargazers]:        https://github.com/jdktrap/JDKTrap/stargazers
-[discord-invite]:         https://discord.gg/dfA9PdWgcV
+[repo-releases]:          https://github.com/Mike-Vision/JDK-Trap/releases
+[repo-latest]:            https://github.com/Mike-Vision/JDK-Trap/releases/latest
+[repo-stargazers]:        https://github.com/Mike-Vision/JDK-Trap/stargazers

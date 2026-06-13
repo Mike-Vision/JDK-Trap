@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 
@@ -20,6 +20,8 @@ namespace JDKTrap.UI.ViewModels.Installer
 
         public ICommand LaunchAboutCommand => new RelayCommand(LaunchAbout);
 
+        public ICommand UninstallCommand => new RelayCommand(Uninstall);
+
         public event EventHandler<NextAction>? CloseWindowRequest;
 
         private void LaunchSettings() => CloseWindowRequest?.Invoke(this, NextAction.LaunchSettings);
@@ -29,5 +31,11 @@ namespace JDKTrap.UI.ViewModels.Installer
         private void LaunchRobloxStudio() => CloseWindowRequest?.Invoke(this, NextAction.LaunchRobloxStudio);
 
         private void LaunchAbout() => new MainWindow().ShowDialog();
+
+        private void Uninstall()
+        {
+            System.Diagnostics.Process.Start(Paths.Process, "-uninstall");
+            App.Terminate();
+        }
     }
 }

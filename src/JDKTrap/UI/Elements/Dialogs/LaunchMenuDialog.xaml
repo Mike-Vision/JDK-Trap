@@ -1,4 +1,4 @@
-﻿<base:WpfUiWindow
+<base:WpfUiWindow
     x:Class="JDKTrap.UI.Elements.Dialogs.LaunchMenuDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -81,7 +81,8 @@
 
                 <StackPanel Grid.Row="1" HorizontalAlignment="Center">
                     <ui:Hyperlink Icon="QuestionCircle48" Content="{x:Static resources:Strings.About_Title}" Command="{Binding LaunchAboutCommand, Mode=OneTime}" />
-                    <ui:Hyperlink Icon="Heart20" Content="Donate Ko-Fi" NavigateUri="https://jdktrapp.netlify.app/donate/donate" HorizontalAlignment="Center" />
+                    <ui:Hyperlink Icon="Heart20" Content="Donate Ko-Fi" NavigateUri="https://boisterous-souffle-33150b.netlify.app/donate/donate" HorizontalAlignment="Center" />
+                    <ui:Hyperlink Icon="Delete24" Content="Uninstall" Command="{Binding UninstallCommand, Mode=OneTime}" Foreground="#FF5555" HorizontalAlignment="Center" />
                 </StackPanel>
 
                 <!--  About Link  -->
@@ -160,7 +161,7 @@
                     Width="285"
                     Margin="0,10,0,0"
                     Command="models:GlobalViewModel.OpenWebpageCommand"
-                    CommandParameter="https://jdktrapp.netlify.app"
+                    CommandParameter="https://boisterous-souffle-33150b.netlify.app"
                     Icon="Globe20"
                     IconFilled="False"
                     TabIndex="2">

@@ -218,14 +218,10 @@ namespace JDKTrap.Integrations.SwiftTunnel
                 var json = JsonSerializer.Serialize(session);
                 var bytes = Encoding.UTF8.GetBytes(json);
 
-                // Simple obfuscation (XOR + base64)
-                var key = new byte[] { 0x53, 0x77, 0x69, 0x66, 0x74, 0x54, 0x75, 0x6E };
-                for (int i = 0; i < bytes.Length; i++)
-                {
-                    bytes[i] ^= key[i % key.Length];
-                }
+                // Secure encryption using Windows Data Protection API (DPAPI)
+                byte[] encrypted = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
 
-                var encoded = Convert.ToBase64String(bytes);
+                var encoded = Convert.ToBase64String(encrypted);
                 File.WriteAllText(GetSessionFilePath(), encoded);
 
                 App.Logger.WriteLine("SwiftTunnelAuthManager", "Session saved to file");
@@ -247,14 +243,10 @@ namespace JDKTrap.Integrations.SwiftTunnel
                 var encoded = File.ReadAllText(path);
                 var bytes = Convert.FromBase64String(encoded);
 
-                // Reverse obfuscation
-                var key = new byte[] { 0x53, 0x77, 0x69, 0x66, 0x74, 0x54, 0x75, 0x6E };
-                for (int i = 0; i < bytes.Length; i++)
-                {
-                    bytes[i] ^= key[i % key.Length];
-                }
+                // Secure decryption using Windows Data Protection API (DPAPI)
+                byte[] decrypted = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
 
-                var json = Encoding.UTF8.GetString(bytes);
+                var json = Encoding.UTF8.GetString(decrypted);
                 return JsonSerializer.Deserialize<AuthSession>(json);
             }
             catch (Exception ex)

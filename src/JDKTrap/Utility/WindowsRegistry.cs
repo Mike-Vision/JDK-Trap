@@ -93,7 +93,8 @@ namespace JDKTrap.Utility
             try
             {
                 using var uriKey = Registry.CurrentUser.CreateSubKey($"{ClassesRoot}{extension}");
-                using var shellNewKey = uriKey?.CreateSubKey($"{RobloxPlaceKey}\\ShellNew");
+                using var shellNewKey = uriKey?.CreateSubKey("ShellNew");
+                shellNewKey?.SetValueSafe("NullFile", "");
 
                 if (uriKey != null)
                     uriKey.SetValueSafe("", RobloxPlaceKey);

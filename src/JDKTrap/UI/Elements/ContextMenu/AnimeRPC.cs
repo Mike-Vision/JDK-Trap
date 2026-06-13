@@ -22,7 +22,7 @@ public static class DiscordManager
 
         var assets = new Assets
         {
-            SmallImageKey = "https://jdktrapp.netlify.app/Image/JDKTrap.png",
+            SmallImageKey = "https://boisterous-souffle-33150b.netlify.app/Image/JDKTrap.png",
             SmallImageText = "JDKTrap"
         };
 

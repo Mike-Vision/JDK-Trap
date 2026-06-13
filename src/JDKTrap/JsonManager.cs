@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -153,7 +153,9 @@ namespace JDKTrap
 
                 Directory.CreateDirectory(baseDir);
 
-                string filePath = Path.Combine(baseDir, name);
+                string filePath = Path.GetFullPath(Path.Combine(baseDir, name));
+                if (!filePath.StartsWith(Path.GetFullPath(baseDir), StringComparison.OrdinalIgnoreCase))
+                    throw new System.Security.SecurityException("Phát hiện hành vi di chuyển thư mục không hợp lệ (Path Traversal)!");
                 string json = JsonSerializer.Serialize(Prop, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(filePath, json);
 
@@ -175,7 +177,9 @@ namespace JDKTrap
                 if (string.IsNullOrWhiteSpace(name))
                     return;
 
-                string filePath = Path.Combine(baseDir, name);
+                string filePath = Path.GetFullPath(Path.Combine(baseDir, name));
+                if (!filePath.StartsWith(Path.GetFullPath(baseDir), StringComparison.OrdinalIgnoreCase))
+                    throw new System.Security.SecurityException("Phát hiện hành vi di chuyển thư mục không hợp lệ (Path Traversal)!");
 
                 if (!File.Exists(filePath))
                     throw new FileNotFoundException($"Backup file '{name}' not found.");

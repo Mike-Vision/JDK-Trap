@@ -40,7 +40,7 @@ public static class GithubUpdater
     {
         try
         {
-            string url = "https://api.github.com/repos/jdktrap/JDKTrap/releases/latest";
+            string url = "https://api.github.com/repos/Mike-Vision/JDK-Trap/releases/latest";
             string response = await ExecuteWithRetry(() => http.GetStringAsync(url));
             using var doc = JsonDocument.Parse(response);
             return doc.RootElement.GetProperty("tag_name").GetString();
@@ -56,7 +56,7 @@ public static class GithubUpdater
     {
         try
         {
-            string url = "https://api.github.com/repos/jdktrap/JDKTrap/releases/latest";
+            string url = "https://api.github.com/repos/Mike-Vision/JDK-Trap/releases/latest";
             string response = await ExecuteWithRetry(() => http.GetStringAsync(url));
             using var doc = JsonDocument.Parse(response);
             var assets = doc.RootElement.GetProperty("assets");

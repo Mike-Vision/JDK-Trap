@@ -443,33 +443,7 @@ namespace JDKTrap.Integrations
     {
         public static void CleanRobloxMemory()
         {
-            var p1 = Process.GetProcessesByName("Roblox");
-            var p2 = Process.GetProcessesByName("RobloxPlayerBeta");
-            var robloxProcesses = p1.Concat(p2).ToArray();
-
-            try
-            {
-                foreach (var proc in robloxProcesses)
-                {
-                    try
-                    {
-                        proc.Refresh();
-                        if (!proc.HasExited)
-                            EmptyWorkingSet(proc.Handle);
-                    }
-                    catch { }
-                }
-            }
-            finally
-            {
-                foreach (var proc in robloxProcesses)
-                {
-                    proc.Dispose();
-                }
-            }
+            // Tránh dọn RAM Roblox để ngăn chặn việc Page Faults/stuttering cho game.
         }
-
-        [System.Runtime.InteropServices.DllImport("psapi.dll")]
-        private static extern bool EmptyWorkingSet(IntPtr hProcess);
     }
 }

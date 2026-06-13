@@ -9,7 +9,6 @@ namespace JDKTrap.RobloxInterfaces
     public static class Deployment
     {
         public const string DefaultChannel = "production";
-        private const string VersionStudioHash = "version-012732894899482c";
 
         public static string Channel { get; set; } = App.Settings.Prop.Channel;
         public static string BinaryType { get; set; } = "WindowsPlayer";
@@ -185,7 +184,7 @@ namespace JDKTrap.RobloxInterfaces
                         continue;
 
                     string content = (await resp.Content.ReadAsStringAsync()).Trim();
-                    if (content == VersionStudioHash)
+                    if (content.StartsWith("version-", StringComparison.OrdinalIgnoreCase) && content.Length >= 16)
                     {
                         BaseUrl = entry.Key;
                         App.Logger.WriteLine(logIdent, $"Using base URL: {BaseUrl}");

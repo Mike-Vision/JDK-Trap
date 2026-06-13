@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Navigation;
 using JDKTrap.UI.ViewModels.Installer;
 
@@ -33,11 +33,27 @@ namespace JDKTrap.UI.Elements.Installer.Pages
         }
         private void DonateButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://jdktrapp.netlify.app/donate/donate") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("https://boisterous-souffle-33150b.netlify.app/donate/donate") { UseShellExecute = true });
         }
         private void ContributorsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://jdktrapp.netlify.app/contributors/contributors") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("https://boisterous-souffle-33150b.netlify.app/contributors/contributors") { UseShellExecute = true });
+        }
+        private void WebsiteCard_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo("https://boisterous-souffle-33150b.netlify.app/home") { UseShellExecute = true });
+        }
+        private void ModsCard_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo("https://boisterous-souffle-33150b.netlify.app/mods/mods") { UseShellExecute = true });
+        }
+        private void CrosshairsCard_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo("https://boisterous-souffle-33150b.netlify.app/crosshairs/crosshairs") { UseShellExecute = true });
+        }
+        private void DocumentationCard_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo("https://boisterous-souffle-33150b.netlify.app/documentation/documentation") { UseShellExecute = true });
         }
     }
 }

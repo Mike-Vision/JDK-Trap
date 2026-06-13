@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -52,7 +52,6 @@ namespace JDKTrap.Models.SettingTasks
                     File.WriteAllBytes(filePath, memoryStream.ToArray());
                 }
             }
-            else if (Directory.Exists(_path))
 
             NewState = Directory.Exists(_path);
             OriginalState = NewState;

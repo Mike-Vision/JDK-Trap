@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -241,12 +241,32 @@ namespace JDKTrap.Integrations
                 SafeDelete(zipPath);
                 SafeDelete(tempZipPath);
 
-                using (var response = await App.HttpClient.GetAsync(
-                    NVIDIA_INSPECTOR_URL,
-                    System.Net.Http.HttpCompletionOption.ResponseHeadersRead))
+                System.Net.Http.HttpResponseMessage? response = null;
+                int retries = 3;
+                int delayMs = 1000;
+                for (int attempt = 1; attempt <= retries; attempt++)
                 {
-                    response.EnsureSuccessStatusCode();
+                    try
+                    {
+                        response = await App.HttpClient.GetAsync(
+                            NVIDIA_INSPECTOR_URL,
+                            System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+                        response.EnsureSuccessStatusCode();
+                        break;
+                    }
+                    catch (Exception ex) when (attempt < retries)
+                    {
+                        App.Logger.WriteLine("NvidiaProfileManager::EnsureInspectorDownloaded", $"Failed attempt {attempt} to download inspector: {ex.Message}. Retrying in {delayMs}ms...");
+                        await Task.Delay(delayMs);
+                        delayMs *= 2;
+                    }
+                }
 
+                if (response == null)
+                    throw new InvalidOperationException("Failed to download Nvidia Inspector after retries");
+
+                using (response)
+                {
                     await using var fs = new FileStream(
                         tempZipPath,
                         FileMode.Create,
