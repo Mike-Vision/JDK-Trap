@@ -1,9 +1,6 @@
-﻿using CommunityToolkit.Mvvm.Input;
-using ICSharpCode.SharpZipLib.Zip;
-//#define ENABLE_ROSLYN
-
 using CommunityToolkit.Mvvm.Input;
 using ICSharpCode.SharpZipLib.Zip;
+//#define ENABLE_ROSLYN
 #if ENABLE_ROSLYN
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;

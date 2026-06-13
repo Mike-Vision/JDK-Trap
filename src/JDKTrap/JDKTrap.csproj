@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<DebugType>none</DebugType>
@@ -149,7 +149,7 @@
 		</PackageReference>
 		<PackageReference Include="NAudio" Version="2.2.1" />
 		<PackageReference Include="securifybv.ShellLink" Version="0.1.0" />
-		<PackageReference Include="SharpCompress" Version="0.47.0" />
+		<PackageReference Include="SharpCompress" Version="0.48.0" />
 		<PackageReference Include="SharpDX" Version="4.2.0" />
 		<PackageReference Include="SharpDX.D3DCompiler" Version="4.2.0" />
 		<PackageReference Include="SharpDX.Desktop" Version="4.2.0" />
@@ -158,11 +158,7 @@
 		<PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
 		<PackageReference Include="SharpZipLib" Version="1.4.2" />
 		<PackageReference Include="SpotifyAPI.Web" Version="7.4.2" />
-		<PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
 		<PackageReference Include="System.Management" Version="10.0.3" />
-		<PackageReference Include="System.Net.Http" Version="4.3.4" />
-		<PackageReference Include="System.Resources.ResourceManager" Version="4.3.0" />
-		<PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.3" />
 		<PackageReference Include="WpfAnimatedGif" Version="2.0.2" />
 		<PackageReference Include="XamlAnimatedGif" Version="2.3.1" />
 		<!-- <PackageReference Include="YoutubeExplode" Version="6.5.5" />

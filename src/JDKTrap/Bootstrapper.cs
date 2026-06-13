@@ -1232,8 +1232,8 @@ namespace JDKTrap
                 {
                     while (!token.IsCancellationRequested)
                     {
-                        var parts = App.Settings.Prop.SelectedCpuPriority.Split(' ');
-                        if (int.TryParse(parts[0], out int coreCount) && coreCount > 0)
+                        var parts = App.Settings?.Prop?.SelectedCpuPriority?.Split(' ');
+                        if (parts != null && parts.Length > 0 && int.TryParse(parts[0], out int coreCount) && coreCount > 0)
                         {
                             int total = Environment.ProcessorCount;
                             coreCount = Math.Clamp(coreCount, 1, total);

@@ -1,10 +1,9 @@
-﻿using JDKTrap.RobloxInterfaces;
+using JDKTrap.RobloxInterfaces;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using JDKTrap;
-using JDKTrap.RobloxInterfaces;
 using System.Net.Http;
 using System.Text.Json;
 

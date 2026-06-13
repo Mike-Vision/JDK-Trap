@@ -1,4 +1,4 @@
-﻿using JDKTrap.UI.Elements.Bootstrapper.Base;
+using JDKTrap.UI.Elements.Bootstrapper.Base;
 using JDKTrap.UI.ViewModels.Bootstrapper;
 using System;
 using System.ComponentModel;
@@ -109,7 +109,7 @@ namespace JDKTrap.UI.Elements.Bootstrapper
 
         private void SetBackgroundImage()
         {
-            BackgroundManager.SetBackgroundAsync(BackgroundImage, CustomBackgroundPath);
+            _ = BackgroundManager.SetBackgroundAsync(BackgroundImage, CustomBackgroundPath);
 
         }
 

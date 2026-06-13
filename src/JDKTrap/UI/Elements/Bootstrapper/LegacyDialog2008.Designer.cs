@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Forms;
 
 namespace JDKTrap.UI.Elements.Bootstrapper
@@ -39,7 +39,7 @@ namespace JDKTrap.UI.Elements.Bootstrapper
                 _mainWindow?.Hide();
             }
             JDKTrap.UI.Elements.Bootstrapper.AudioPlayerHelper.PlayStartupAudio();
-            this.Closed += (s, e) =>
+            this.FormClosed += (s, e) =>
             {
                 _mainWindow = System.Windows.Application.Current.Windows
                 .OfType<JDKTrap.UI.Elements.Settings.MainWindow>()
