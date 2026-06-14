@@ -119,7 +119,7 @@ namespace JDKTrap
         {
             e.Handled = true;
 
-            Logger.WriteLine("App::GlobalExceptionHandler", "An exception occurred");
+            Logger.WriteLine("App::GlobalExceptionHandler", $"An exception occurred: {e.Exception.GetType().FullName}");
 
             FinalizeExceptionHandling(e.Exception);
         }
@@ -212,6 +212,9 @@ namespace JDKTrap
 
             // Prevent DLL Hijacking by searching only in the application's base directory and System32
             try { SetDefaultDllDirectories(0x00000200 | 0x00000800); } catch { }
+
+            // Disable advanced Stylus and Touch support to prevent internal WPF CommandDevice.PreProcessInput NullReferenceException crashes
+            try { AppContext.SetSwitch("Switch.System.Windows.Input.Stylus.DisableStylusAndTouchSupport", true); } catch { }
 
             Locale.Initialize();
             base.OnStartup(e);

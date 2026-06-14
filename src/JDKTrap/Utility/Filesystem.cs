@@ -39,6 +39,39 @@ namespace JDKTrap.Utility
 
             Directory.CreateDirectory(destDir);
 
+            // Clean up obsolete DLL/PDB and runtime config files from the destination directory
+            // to prevent runtime conflicts when transitioning to single-file publish builds
+            try
+            {
+                if (Directory.Exists(destDir))
+                {
+                    foreach (var file in Directory.EnumerateFiles(destDir))
+                    {
+                        string name = Path.GetFileName(file);
+                        string ext = Path.GetExtension(file).ToLowerInvariant();
+                        if (ext == ".dll" || ext == ".pdb" ||
+                            name.Equals("JDKTrap.deps.json", StringComparison.OrdinalIgnoreCase) ||
+                            name.Equals("JDKTrap.runtimeconfig.json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                AssertReadOnly(file);
+                                File.Delete(file);
+                                App.Logger.WriteLine("Filesystem::CopyAppFiles", $"Cleaned up obsolete/leftover file: {name}");
+                            }
+                            catch (Exception fileEx)
+                            {
+                                App.Logger.WriteLine("Filesystem::CopyAppFiles", $"Failed to clean up file {name}: {fileEx.Message}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("Filesystem::CopyAppFiles", $"Failed to clean up obsolete files in destination: {ex.Message}");
+            }
+
             foreach (var file in Directory.EnumerateFiles(sourceDir, "*.*"))
             {
                 string ext = Path.GetExtension(file).ToLowerInvariant();

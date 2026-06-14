@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shell;
@@ -16,6 +16,16 @@ namespace JDKTrap.UI.ViewModels.Bootstrapper
         public string Title => App.Settings.Prop.BootstrapperTitle;
         public ImageSource Icon { get; set; } = App.Settings.Prop.BootstrapperIcon.GetIcon().GetImageSource();
         public string Message { get; set; } = "Please wait..";
+        private string _subMessage = "";
+        public string SubMessage
+        {
+            get => _subMessage;
+            set
+            {
+                _subMessage = value;
+                OnPropertyChanged(nameof(SubMessage));
+            }
+        }
         public bool ProgressIndeterminate { get; set; } = true;
         public int ProgressMaximum { get; set; } = 0;
         public int ProgressValue { get; set; } = 0;

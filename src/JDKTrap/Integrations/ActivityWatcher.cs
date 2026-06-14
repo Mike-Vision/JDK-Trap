@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using JDKTrap.Models.Entities;
 using JDKTrap.UI.Elements.Settings.Pages;
 using static JDKTrap.Models.Persistable.AppSettings;
 
@@ -104,6 +105,7 @@ namespace JDKTrap.Integrations
         public Dictionary<int, ActivityData.UserLog> PlayerLogs => Data.PlayerLogs;
         public Dictionary<int, ActivityData.UserMessage> MessageLogs => Data.MessageLogs;
         public bool IsDisposed = false;
+        public Task HistorySaveTask { get; private set; } = Task.CompletedTask;
 
         public ActivityWatcher(string? logFile = null)
         {
@@ -153,7 +155,7 @@ namespace JDKTrap.Integrations
                     var currentServer = response.Data.FirstOrDefault(s => s.Id == Data.JobId);
                     countFromApi = currentServer != null
                         ? currentServer.Playing
-                        : response.Data.Sum(s => s.Playing);
+                        : 0;
                 }
             }
             catch { }
@@ -360,6 +362,8 @@ namespace JDKTrap.Integrations
                     var lastData = Data;
                     Data = new();
 
+                    HistorySaveTask = SaveToHistoryFileAsync(lastData);
+
                     OnGameLeave?.Invoke(this, EventArgs.Empty);
                 }
                 else if (entry.Contains(GameTeleportingEntry))
@@ -495,6 +499,92 @@ namespace JDKTrap.Integrations
             _resolutionApplied = true;
 
             InGameResolutionApplier.Apply(settings.InGameResolution);
+        }
+
+        private async Task SaveToHistoryFileAsync(ActivityData entry)
+        {
+            if (entry == null || entry.PlaceId == 0)
+                return;
+
+            const string LOG_IDENT = "ActivityWatcher::SaveToHistoryFileAsync";
+            try
+            {
+                // 1. Fetch details if missing
+                if (entry.UniverseDetails == null && entry.UniverseId != 0)
+                {
+                    try
+                    {
+                        await UniverseDetails.FetchSingle(entry.UniverseId);
+                        entry.UniverseDetails = UniverseDetails.LoadFromCache(entry.UniverseId);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteException(LOG_IDENT, ex);
+                    }
+                }
+
+                // 2. Read existing history from file
+                string historyFilePath = Path.Combine(Paths.Base, "ServerHistory.json");
+                List<ActivityData> savedHistory = new();
+                if (File.Exists(historyFilePath))
+                {
+                    try
+                    {
+                        var json = File.ReadAllText(historyFilePath);
+                        var saved = JsonSerializer.Deserialize<List<ActivityData>>(json);
+                        if (saved != null)
+                            savedHistory = saved;
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteException(LOG_IDENT, ex);
+                    }
+                }
+
+                // 3. Merge and consolidate
+                var dict = savedHistory.ToDictionary(
+                    x => $"{x.PlaceId}_{x.JobId}",
+                    x => x
+                );
+
+                string key = $"{entry.PlaceId}_{entry.JobId}";
+                if (dict.TryGetValue(key, out var existing))
+                {
+                    if (existing.TimeJoined > entry.TimeJoined)
+                        existing.TimeJoined = entry.TimeJoined;
+                    if (existing.TimeLeft < entry.TimeLeft)
+                        existing.TimeLeft = entry.TimeLeft;
+                    if (existing.RootActivity == null && entry.RootActivity != null)
+                        existing.RootActivity = entry.RootActivity;
+                    if (existing.UniverseDetails == null && entry.UniverseDetails != null)
+                        existing.UniverseDetails = entry.UniverseDetails;
+
+                    foreach (var kvp in entry.PlayerLogs)
+                        existing.PlayerLogs[kvp.Key] = kvp.Value;
+                    foreach (var kvp in entry.MessageLogs)
+                        existing.MessageLogs[kvp.Key] = kvp.Value;
+                }
+                else
+                {
+                    dict[key] = entry;
+                }
+
+                var updatedHistory = dict.Values
+                    .OrderByDescending(x => x.TimeJoined)
+                    .Take(50) // Max history entries (HistoryPageViewModel uses 50)
+                    .ToList();
+
+                // 4. Save back to file
+                Directory.CreateDirectory(Paths.Base);
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                var serializedJson = JsonSerializer.Serialize(updatedHistory, options);
+                File.WriteAllText(historyFilePath, serializedJson);
+                App.Logger.WriteLine(LOG_IDENT, $"Successfully saved game {entry.PlaceId} to history file.");
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteException(LOG_IDENT, ex);
+            }
         }
 
         public void Dispose()

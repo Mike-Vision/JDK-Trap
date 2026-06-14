@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -308,6 +310,45 @@ namespace JDKTrap
             }
 
             Mutex? mutex = null;
+            EventWaitHandle? singletonEvent = null;
+            Mutex? localMutex = null;
+            EventWaitHandle? localEvent = null;
+
+            if (App.Settings.Prop.MultiInstance)
+            {
+                try
+                {
+                    var mutexSecurity = new MutexSecurity();
+                    mutexSecurity.AddAccessRule(new MutexAccessRule(
+                        new SecurityIdentifier(WellKnownSidType.WorldSid, null),
+                        MutexRights.FullControl,
+                        AccessControlType.Deny
+                    ));
+
+                    var eventSecurity = new EventWaitHandleSecurity();
+                    eventSecurity.AddAccessRule(new EventWaitHandleAccessRule(
+                        new SecurityIdentifier(WellKnownSidType.WorldSid, null),
+                        EventWaitHandleRights.FullControl,
+                        AccessControlType.Deny
+                    ));
+
+                    // Block global singleton mutex (prevents Roblox from detecting existing instances)
+                    mutex = MutexAcl.Create(true, @"Global\ROBLOX_singletonMutex", out _, mutexSecurity);
+
+                    // Block global singleton event (prevents second Roblox from signaling the first to take over)
+                    singletonEvent = EventWaitHandleAcl.Create(true, EventResetMode.AutoReset, @"Global\ROBLOX_singletonEvent", out _, eventSecurity);
+
+                    // Also block local (non-Global) variants as fallback
+                    try { localMutex = MutexAcl.Create(true, "ROBLOX_singletonMutex", out _, mutexSecurity); } catch { }
+                    try { localEvent = EventWaitHandleAcl.Create(true, EventResetMode.AutoReset, "ROBLOX_singletonEvent", out _, eventSecurity); } catch { }
+
+                    App.Logger.WriteLine(LOG_IDENT, "Created Multi-Instance Mutex and EventWaitHandle with Deny Everyone DACL (Global + Local).");
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Failed to create Multi-Instance sync objects: {ex.Message}");
+                }
+            }
 
             if (App.Settings.Prop.ExclusiveFullscreen)
             {
@@ -351,6 +392,22 @@ namespace JDKTrap
                     {
                         try { mutex.ReleaseMutex(); } catch { }
                         mutex.Dispose();
+                    }
+
+                    if (singletonEvent != null)
+                    {
+                        try { singletonEvent.Dispose(); } catch { }
+                    }
+
+                    if (localMutex != null)
+                    {
+                        try { localMutex.ReleaseMutex(); } catch { }
+                        localMutex.Dispose();
+                    }
+
+                    if (localEvent != null)
+                    {
+                        try { localEvent.Dispose(); } catch { }
                     }
 
                     App.Terminate();

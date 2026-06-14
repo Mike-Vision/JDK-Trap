@@ -1,4 +1,4 @@
-﻿using System.Windows.Forms;
+using System.Windows.Forms;
 using System.Windows.Shell;
 
 namespace JDKTrap.UI
@@ -8,6 +8,7 @@ namespace JDKTrap.UI
         public Bootstrapper? Bootstrapper { get; set; }
 
         string Message { get; set; }
+        string SubMessage { get; set; }
         ProgressBarStyle ProgressStyle { get; set; }
         int ProgressValue { get; set; }
         int ProgressMaximum { get; set; }

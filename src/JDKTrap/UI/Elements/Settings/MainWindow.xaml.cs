@@ -5,8 +5,12 @@ using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -261,7 +265,15 @@ namespace JDKTrap.UI.Elements.Settings
                     {
                         vm.Tabs.Remove(newTab);
                         if (vm.SelectedTab == newTab)
+                        {
                             vm.SelectedTab = vm.Tabs.FirstOrDefault();
+                        }
+
+                        if (!vm.Tabs.Any())
+                        {
+                            RootNavigation.Navigate(typeof(Pages.IntegrationsPage));
+                        }
+
                         SaveTabsStructure();
                     };
                     headerPanel.Children.Add(deleteBtn);
@@ -325,12 +337,15 @@ namespace JDKTrap.UI.Elements.Settings
 
         private void OpenToolbox(TabItemViewModel targetTab, MainWindowViewModel vm)
         {
-            var toolboxWindow = new Window
+            var toolboxWindow = new Wpf.Ui.Controls.UiWindow
             {
                 Title = "Add Tools",
-                Width = 320,
-                Height = 400,
+                Width = 360,
+                Height = 520,
                 Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ExtendsContentIntoTitleBar = true,
+                ResizeMode = ResizeMode.NoResize,
                 Background = Brushes.Transparent
             };
 
@@ -345,38 +360,68 @@ namespace JDKTrap.UI.Elements.Settings
             backgroundGradient.GradientStops.Add(new GradientStop((Color)TryFindResource("WindowBackgroundColorThird"), 1.10));
 
             var rootGrid = new Grid { Background = backgroundGradient };
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-            var toolboxPanel = new StackPanel { Margin = new Thickness(15) };
+            var titleBar = new Wpf.Ui.Controls.TitleBar
+            {
+                Title = "Add Tools",
+                CanMaximize = false,
+                ShowMaximize = false,
+                ShowMinimize = false
+            };
+            Grid.SetRow(titleBar, 0);
+            rootGrid.Children.Add(titleBar);
+
+            var toolboxPanel = new StackPanel { Margin = new Thickness(15, 5, 15, 15) };
             var scrollViewer = new ScrollViewer
             {
                 Content = toolboxPanel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
-
+            Grid.SetRow(scrollViewer, 1);
             rootGrid.Children.Add(scrollViewer);
+
             toolboxWindow.Content = rootGrid;
 
             void CreateToolItem(string name, string desc)
             {
-                var toolBtn = new System.Windows.Controls.Button
+                var toolCard = new Wpf.Ui.Controls.CardAction
                 {
-                    Margin = new Thickness(0, 0, 0, 10),
-                    Padding = new Thickness(10),
-                    HorizontalContentAlignment = HorizontalAlignment.Left
+                    Margin = new Thickness(0, 0, 0, 8),
+                    Padding = new Thickness(12, 10, 12, 10),
                 };
 
                 var stack = new StackPanel();
-                stack.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.Medium });
-                stack.Children.Add(new TextBlock { Text = desc, FontSize = 12, TextWrapping = TextWrapping.Wrap });
-                toolBtn.Content = stack;
 
-                toolBtn.Click += (_, _) =>
+                var titleTxt = new TextBlock
+                {
+                    Text = name,
+                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 14,
+                    Foreground = Brushes.White
+                };
+                stack.Children.Add(titleTxt);
+
+                var descTxt = new TextBlock
+                {
+                    Text = desc,
+                    FontSize = 12,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    Foreground = new SolidColorBrush(Color.FromRgb(200, 200, 200))
+                };
+                stack.Children.Add(descTxt);
+
+                toolCard.Content = stack;
+
+                toolCard.Click += (_, _) =>
                 {
                     AddOption(name, desc, true, targetTab, vm);
                     SaveTabsStructure();
                     toolboxWindow.Close();
                 };
-                toolboxPanel.Children.Add(toolBtn);
+                toolboxPanel.Children.Add(toolCard);
             }
 
             CreateToolItem("FullBright", "Attempt to recreate Fullbright without FFlags.");
@@ -1397,25 +1442,6 @@ namespace JDKTrap.UI.Elements.Settings
         {
             LoadTabsStructure();
             InitializeNavigation();
-
-            if (RootNavigation.PageService is JDKTrap.UI.SimplePageService pageService)
-            {
-                pageService.PreWarmPages(
-                    typeof(HistoryPage),
-                    typeof(IntegrationsPage),
-                    typeof(BehaviourPage),
-                    typeof(AppearancePage),
-                    typeof(ServerBrowserPage),
-                    typeof(FastFlagsPage),
-                    typeof(FastFlagEditorPage),
-                    typeof(GBSEditorPage),
-                    typeof(ModsPage),
-                    typeof(NewsPage),
-                    typeof(ExtensionPage),
-                    typeof(ShortcutsPage),
-                    typeof(ChannelPage)
-                );
-            }
             if (App.Settings.Prop.GRADmentFR)
             {
                 CompositionTarget.Rendering += CompositionTarget_Rendering;
@@ -1451,6 +1477,8 @@ namespace JDKTrap.UI.Elements.Settings
             {
                 IntroOverlay.Visibility = Visibility.Collapsed;
             }
+
+            _ = LoadRobloxProfileAsync();
         }
 
         private Size _lastSnowCanvasSize = Size.Empty;
@@ -1787,6 +1815,124 @@ namespace JDKTrap.UI.Elements.Settings
             public string ControlType { get; set; } = "ToggleSwitch";
             public bool IsChecked { get; set; }
             public SerializableThickness Margin { get; set; } = new SerializableThickness();
+        }
+
+        private async Task LoadRobloxProfileAsync()
+        {
+            try
+            {
+                string cookiePath = App.RobloxCookiesFilePath;
+                if (!File.Exists(cookiePath))
+                {
+                    ProfileCard.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                string jsonText = await File.ReadAllTextAsync(cookiePath);
+                var json = JsonSerializer.Deserialize<RobloxCookieJson>(jsonText);
+                if (json == null || string.IsNullOrEmpty(json.CookiesData))
+                {
+                    ProfileCard.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                byte[] encryptedBytes = Convert.FromBase64String(json.CookiesData);
+                byte[] decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
+                string text = System.Text.Encoding.UTF8.GetString(decryptedBytes);
+
+                string? cookieVal = null;
+                foreach (var line in text.Split('\n'))
+                {
+                    var parts = line.Split('\t');
+                    if (parts.Length >= 7 && parts[5] == ".ROBLOSECURITY")
+                    {
+                        cookieVal = parts[6].Trim();
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(cookieVal))
+                {
+                    ProfileCard.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                using var handler = new HttpClientHandler { UseCookies = false };
+                using var client = new HttpClient(handler);
+                using var request = new HttpRequestMessage(HttpMethod.Get, "https://users.roblox.com/v1/users/authenticated");
+                request.Headers.Add("Cookie", $".ROBLOSECURITY={cookieVal}");
+                request.Headers.Add("User-Agent", "Roblox/WinInet");
+
+                var response = await client.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    ProfileCard.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                string content = await response.Content.ReadAsStringAsync();
+                var authUser = JsonSerializer.Deserialize<RobloxAuthUser>(content);
+                if (authUser == null)
+                {
+                    ProfileCard.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                ProfileDisplayName.Text = authUser.DisplayName;
+                ProfileUsername.Text = $"@{authUser.Name}";
+
+                string thumbUrl = $"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={authUser.Id}&size=180x180&format=Png&isCircular=false";
+                string thumbContent = await client.GetStringAsync(thumbUrl);
+                var thumbResponse = JsonSerializer.Deserialize<RobloxThumbResponse>(thumbContent);
+                if (thumbResponse?.Data != null && thumbResponse.Data.Length > 0)
+                {
+                    string imageUrl = thumbResponse.Data[0].ImageUrl;
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(imageUrl);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    ProfileAvatar.Source = bitmap;
+                }
+
+                ProfileCard.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("MainWindow::LoadRobloxProfile", $"Failed to load profile: {ex.Message}");
+                ProfileCard.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private class RobloxCookieJson
+        {
+            [JsonPropertyName("CookiesVersion")]
+            public string CookiesVersion { get; set; } = "";
+
+            [JsonPropertyName("CookiesData")]
+            public string CookiesData { get; set; } = "";
+        }
+
+        private class RobloxAuthUser
+        {
+            [JsonPropertyName("id")]
+            public long Id { get; set; }
+            [JsonPropertyName("name")]
+            public string Name { get; set; } = "";
+            [JsonPropertyName("displayName")]
+            public string DisplayName { get; set; } = "";
+        }
+
+        private class RobloxThumbResponse
+        {
+            [JsonPropertyName("data")]
+            public RobloxThumbData[] Data { get; set; } = Array.Empty<RobloxThumbData>();
+        }
+
+        private class RobloxThumbData
+        {
+            [JsonPropertyName("imageUrl")]
+            public string ImageUrl { get; set; } = "";
         }
 
         #endregion

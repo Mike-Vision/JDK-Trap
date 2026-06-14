@@ -191,6 +191,7 @@ namespace JDKTrap
         }
 
         private void SetStatus(string message) => InvokeOnDialog(() => Dialog!.Message = message);
+        private void SetSubStatus(string subMessage) => InvokeOnDialog(() => Dialog!.SubMessage = subMessage);
         private void SetProgressValue(int value) => InvokeOnDialog(() => Dialog!.ProgressValue = value);
         private void SetProgressMaximum(int max) => InvokeOnDialog(() => Dialog!.ProgressMaximum = max);
         private void SetProgressStyle(ProgressBarStyle style) => InvokeOnDialog(() => Dialog!.ProgressStyle = style);
@@ -2009,6 +2010,7 @@ namespace JDKTrap
         {
             const string LOG_IDENT = "Bootstrapper::ApplyModifications";
             SetStatus(Strings.Bootstrapper_Status_ApplyingModifications);
+            SetSubStatus("Applying FastFlags...");
 
             // Áp dụng FastFlags tối ưu hiệu năng nếu OptimizeRoblox = true
             App.FastFlags.ApplyOptimizationFlags();
@@ -2019,8 +2021,13 @@ namespace JDKTrap
 
             try
             {
+                SetSubStatus("Applying Skybox Patch...");
                 await ApplySkyboxPatchToRobloxStorageAsync();
+                
+                SetSubStatus("Downloading Skybox Pack...");
                 await EnsureSkyboxPackDownloadedAsync();
+                
+                SetSubStatus($"Applying Skybox: {App.Settings.Prop.SkyboxName}...");
                 await ApplySkyboxAsync(App.Settings.Prop.SkyboxName, Paths.Mods);
                 App.Logger.WriteLine(LOG_IDENT, "Skybox applied.");
             }
@@ -2030,10 +2037,12 @@ namespace JDKTrap
             }
 
             string modFontDir = Path.Combine(Paths.Mods, "content\\fonts\\families");
+            SetSubStatus("Applying Custom Font...");
             ApplyCustomFont(LOG_IDENT, modFontDir);
             var modFolderFiles = new List<string>();
 
-            foreach (string file in Directory.GetFiles(Paths.Mods, "*.*", SearchOption.AllDirectories))
+            var files = Directory.GetFiles(Paths.Mods, "*.*", SearchOption.AllDirectories);
+            foreach (string file in files)
             {
                 if (_cancelTokenSource.IsCancellationRequested) return;
 
@@ -2050,6 +2059,8 @@ namespace JDKTrap
 
                 string src = Path.Combine(Paths.Mods, rel);
                 string dest = Path.Combine(_latestVersionDirectory, rel);
+
+                SetSubStatus($"Copying mod file: {Path.GetFileName(rel)}...");
 
                 if (File.Exists(dest) && MD5Hash.FromFile(src) == MD5Hash.FromFile(dest))
                     continue;
@@ -2081,19 +2092,26 @@ namespace JDKTrap
                 fileRestoreMap[pkgName].Add(loc.Substring(entry.Value.Length));
             }
 
-            foreach (var (pkgName, files) in fileRestoreMap)
+            foreach (var (pkgName, filesToRestore) in fileRestoreMap)
             {
                 if (_cancelTokenSource.IsCancellationRequested) return;
                 var pkg = _versionPackageManifest.Find(x => x.Name == pkgName);
-                if (pkg is not null) { await DownloadPackage(pkg); ExtractPackage(pkg, files); }
+                if (pkg is not null)
+                {
+                    SetSubStatus($"Downloading original package: {pkgName}...");
+                    await DownloadPackage(pkg);
+                    
+                    SetSubStatus($"Extracting original package: {pkgName}...");
+                    ExtractPackage(pkg, filesToRestore);
+                }
             }
 
             App.State.Prop.ModManifest = modFolderFiles;
             App.State.Save();
 
-  
             try
             {
+                SetSubStatus("Configuring launcher links...");
                 bool isEuro = File.Exists(Path.Combine(_latestVersionDirectory, ProcEuroTrucks));
                 if (App.Settings.Prop.RenameClientToEuroTrucks2 && !isEuro)
                     File.Move(Path.Combine(_latestVersionDirectory, ProcRobloxExe),
@@ -2106,6 +2124,8 @@ namespace JDKTrap
             {
                 App.Logger.WriteLine(LOG_IDENT, "EuroTrucks rename failed: " + ex.Message);
             }
+
+            SetSubStatus("");
         }
 
         private void ApplyCustomFont(string logIdent, string modFontDir)

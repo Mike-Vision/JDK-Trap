@@ -26,6 +26,12 @@ namespace JDKTrap.UI.Elements.Bootstrapper
             set => SetProperty(nameof(_viewModel.Message), value, v => _viewModel.Message = v);
         }
 
+        public string SubMessage
+        {
+            get => _viewModel.SubMessage;
+            set => SetProperty(nameof(_viewModel.SubMessage), value, v => _viewModel.SubMessage = v);
+        }
+
         public ProgressBarStyle ProgressStyle
         {
             get => _viewModel.ProgressIndeterminate ? ProgressBarStyle.Marquee : ProgressBarStyle.Continuous;

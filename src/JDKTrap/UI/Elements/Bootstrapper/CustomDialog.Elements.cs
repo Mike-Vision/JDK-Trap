@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -573,6 +573,11 @@ namespace JDKTrap.UI.Elements.Bootstrapper
             if (xmlElement.Attribute("Name")?.Value == "StatusText")
             {
                 Binding textBinding = new Binding("Message") { Mode = BindingMode.OneWay };
+                BindingOperations.SetBinding(textBlock, TextBlock.TextProperty, textBinding);
+            }
+            else if (xmlElement.Attribute("Name")?.Value == "SubStatusText")
+            {
+                Binding textBinding = new Binding("SubMessage") { Mode = BindingMode.OneWay };
                 BindingOperations.SetBinding(textBlock, TextBlock.TextProperty, textBinding);
             }
 

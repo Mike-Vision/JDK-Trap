@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using JDKTrap.Resources;
 
 namespace JDKTrap.Utility
@@ -11,12 +11,20 @@ namespace JDKTrap.Utility
         {
             const string LOG_IDENT = "Shortcut::Create";
 
-            if (File.Exists(lnkPath))
-                return;
-
             try
             {
-                ShellLink.Shortcut.CreateShortcut(exePath, exeArgs, exePath, 0).WriteToFile(lnkPath);
+                if (File.Exists(lnkPath))
+                {
+                    Filesystem.AssertReadOnly(lnkPath);
+                    File.Delete(lnkPath);
+                }
+
+                var shortcut = ShellLink.Shortcut.CreateShortcut(exePath, exeArgs, exePath, 0);
+                if (shortcut.StringData == null)
+                    shortcut.StringData = new ShellLink.Structures.StringData();
+                
+                shortcut.StringData.WorkingDir = Path.GetDirectoryName(exePath) ?? "";
+                shortcut.WriteToFile(lnkPath);
 
                 if (_loadStatus != GenericTriState.Successful)
                     _loadStatus = GenericTriState.Successful;

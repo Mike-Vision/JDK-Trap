@@ -161,9 +161,23 @@ namespace JDKTrap
         {
             App.Logger.WriteLine("Watcher::Dispose", "Disposing Watcher");
 
+            if (ActivityWatcher != null)
+            {
+                try
+                {
+                    App.Logger.WriteLine("Watcher::Dispose", "Waiting for ActivityWatcher history save task...");
+                    ActivityWatcher.HistorySaveTask.Wait(3000);
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException("Watcher::Dispose", ex);
+                }
+            }
+
             IntegrationWatcher?.Dispose();
             _notifyIcon?.Dispose();
             RichPresence?.Dispose();
+            ActivityWatcher?.Dispose();
 
             GC.SuppressFinalize(this);
         }

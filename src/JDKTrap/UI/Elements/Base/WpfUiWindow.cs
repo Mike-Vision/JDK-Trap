@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
@@ -18,6 +18,8 @@ namespace JDKTrap.UI.Elements.Base
         private readonly IThemeService _themeService = new ThemeService();
         private ThemeType? _lastAppliedTheme = null;
         private bool _disposed = false;
+
+        private static bool _downloadingCustomXshd = false;
 
         protected WpfUiWindow()
         {
@@ -66,8 +68,9 @@ namespace JDKTrap.UI.Elements.Base
                     }
                 }
 
-                if (!File.Exists(customXshdPath))
+                if (!File.Exists(customXshdPath) && !_downloadingCustomXshd)
                 {
+                    _downloadingCustomXshd = true;
                     _ = Task.Run(async () =>
                     {
                         var url = "https://raw.githubusercontent.com/KloBraticc/JDKTrapCustomThemes/main/Editor-Theme-Custom.xshd";
@@ -82,13 +85,29 @@ namespace JDKTrap.UI.Elements.Base
                         }
                         catch (Exception ex)
                         {
-                            Application.Current.Dispatcher.Invoke(() =>
+                            App.Logger.WriteLine("WpfUiWindow::ApplyTheme", "Failed to download Custom XSHD file. Writing fallback Dark theme.");
+                            App.Logger.WriteException("WpfUiWindow::ApplyTheme", ex);
+
+                            try
                             {
-                                Frontend.ShowMessageBox(
-                                    $"Failed to download Custom XSHD file:\n{ex.Message}",
-                                    MessageBoxImage.Warning
-                                );
-                            });
+                                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                                using var resourceStream = assembly.GetManifestResourceStream("JDKTrap.UI.Style.Editor-Theme-Dark.xshd");
+                                if (resourceStream != null)
+                                {
+                                    using var reader = new StreamReader(resourceStream);
+                                    string defaultXshd = await reader.ReadToEndAsync();
+                                    Directory.CreateDirectory(Paths.Base);
+                                    await File.WriteAllTextAsync(customXshdPath, defaultXshd);
+                                }
+                            }
+                            catch (Exception writeEx)
+                            {
+                                App.Logger.WriteException("WpfUiWindow::ApplyTheme::FallbackWrite", writeEx);
+                            }
+                        }
+                        finally
+                        {
+                            _downloadingCustomXshd = false;
                         }
                     });
                 }

@@ -113,6 +113,7 @@ namespace JDKTrap.Models.Persistable
         public bool HideRPCButtons { get; set; } = true;
         public bool ShowAccountOnRichPresence { get; set; } = true;
         public bool MultiAccount { get; set; } = false;
+        public bool MultiInstance { get; set; } = false;
         public bool ShowServerDetails { get; set; } = true;
 
         public bool OverlaysEnabled { get; set; } = false;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -40,6 +40,21 @@ namespace JDKTrap.UI.Elements.Bootstrapper.Base
                     Invoke(new Action(() => _message = value));
                 else
                     _message = value;
+            }
+        }
+
+        protected string _subMessage = "";
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public virtual string SubMessage
+        {
+            get => _subMessage;
+            set
+            {
+                if (InvokeRequired)
+                    Invoke(new Action(() => _subMessage = value));
+                else
+                    _subMessage = value;
             }
         }
 

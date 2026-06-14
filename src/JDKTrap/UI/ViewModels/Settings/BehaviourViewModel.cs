@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -209,6 +209,12 @@ namespace JDKTrap.UI.ViewModels.Settings
         {
             get => App.Settings.Prop.MultiAccount;
             set => App.Settings.Prop.MultiAccount = value;
+        }
+
+        public bool MultiInstance
+        {
+            get => App.Settings.Prop.MultiInstance;
+            set => App.Settings.Prop.MultiInstance = value;
         }
 
         public bool ForceRobloxLanguage

@@ -1,4 +1,4 @@
-﻿using JDKTrap.UI.Elements.Bootstrapper.Base;
+using JDKTrap.UI.Elements.Bootstrapper.Base;
 using JDKTrap.UI.ViewModels.Bootstrapper;
 using System.ComponentModel;
 using System.Drawing;
@@ -29,6 +29,16 @@ namespace JDKTrap.UI.Elements.Bootstrapper
             {
                 _viewModel.Message = value;
                 _viewModel.OnPropertyChanged(nameof(_viewModel.Message));
+            }
+        }
+
+        public string SubMessage
+        {
+            get => _viewModel.SubMessage;
+            set
+            {
+                _viewModel.SubMessage = value;
+                _viewModel.OnPropertyChanged(nameof(_viewModel.SubMessage));
             }
         }
 

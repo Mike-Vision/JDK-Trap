@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Input;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Win32;
 using NAudio.Gui;
@@ -79,31 +79,42 @@ namespace JDKTrap.UI.ViewModels.Settings
 
         public async Task LoadModsAsync() // was working on this but idk fuc
         {
-            using var http = new HttpClient();
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("JDKTrapApp");
-
-            var json = await http.GetStringAsync(GitHubApiBase);
-            var items = JsonSerializer.Deserialize<List<GitHubContent>>(json);
-
-            var mods = new List<ModInfo>();
-
-            foreach (var item in items)
+            try
             {
-                if (item.Type == "dir")
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("JDKTrapApp");
+
+                var json = await http.GetStringAsync(GitHubApiBase);
+                var items = JsonSerializer.Deserialize<List<GitHubContent>>(json);
+
+                var mods = new List<ModInfo>();
+
+                foreach (var item in items)
                 {
-                    var mod = new ModInfo
+                    if (item.Type == "dir")
                     {
-                        Name = item.Name,
-                        FolderPath = item.Path
-                    };
+                        var mod = new ModInfo
+                        {
+                            Name = item.Name,
+                            FolderPath = item.Path
+                        };
 
-                    mod.ImageUrl = await GetPreviewImageUrl(item.Path, http);
+                        mod.ImageUrl = await GetPreviewImageUrl(item.Path, http);
 
-                    mods.Add(mod);
+                        mods.Add(mod);
+                    }
                 }
-            }
 
-            AvailableMods = new ObservableCollection<ModInfo>(mods);
+                AvailableMods = new ObservableCollection<ModInfo>(mods);
+            }
+            catch (HttpRequestException ex)
+            {
+                App.Logger.WriteLine("ModsViewModel::LoadModsAsync", $"Failed to load mods from GitHub: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("ModsViewModel::LoadModsAsync", $"Unexpected error loading mods: {ex.Message}");
+            }
         }
 
         private async Task<string> GetPreviewImageUrl(string folder, HttpClient http)
@@ -136,39 +147,50 @@ namespace JDKTrap.UI.ViewModels.Settings
 
         public async Task LoadSkyboxPacksFromGithub()
         {
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("JDKTrapSkyboxClient");
-
-            AvailableSkyboxPacks.Clear();
-
-            var response = await _http.GetFromJsonAsync<JsonElement[]>(RepoRoot);
-            if (response == null) return;
-            var folders = response
-                .Where(e => e.GetProperty("type").GetString() == "dir")
-                .Select(e => e.GetProperty("name").GetString()!)
-                .ToList();
-
-            if (folders.Contains("Default"))
+            try
             {
-                AvailableSkyboxPacks.Add(new SkyboxPack
-                {
-                    Name = "Default",
-                    DownloadUri = new Uri("https://github.com/KloBraticc/SkyboxPackV2/archive/refs/heads/main.zip#Default")
-                });
-            }
-            foreach (var name in folders.Where(f => !f.Equals("Default", StringComparison.OrdinalIgnoreCase)))
-            {
-                AvailableSkyboxPacks.Add(new SkyboxPack
-                {
-                    Name = name,
-                    DownloadUri = new Uri($"https://github.com/KloBraticc/SkyboxPackV2/archive/refs/heads/main.zip#{name}")
-                });
-            }
-            var selected = AvailableSkyboxPacks.FirstOrDefault(s =>
-                s.Name.Equals(App.Settings.Prop.SkyboxName, StringComparison.OrdinalIgnoreCase))
-                ?? AvailableSkyboxPacks.First();
+                _http.DefaultRequestHeaders.UserAgent.ParseAdd("JDKTrapSkyboxClient");
 
-            SelectedSkyboxPack = selected;
-            App.Settings.Prop.SkyboxName = selected.Name;
+                AvailableSkyboxPacks.Clear();
+
+                var response = await _http.GetFromJsonAsync<JsonElement[]>(RepoRoot);
+                if (response == null) return;
+                var folders = response
+                    .Where(e => e.GetProperty("type").GetString() == "dir")
+                    .Select(e => e.GetProperty("name").GetString()!)
+                    .ToList();
+
+                if (folders.Contains("Default"))
+                {
+                    AvailableSkyboxPacks.Add(new SkyboxPack
+                    {
+                        Name = "Default",
+                        DownloadUri = new Uri("https://github.com/KloBraticc/SkyboxPackV2/archive/refs/heads/main.zip#Default")
+                    });
+                }
+                foreach (var name in folders.Where(f => !f.Equals("Default", StringComparison.OrdinalIgnoreCase)))
+                {
+                    AvailableSkyboxPacks.Add(new SkyboxPack
+                    {
+                        Name = name,
+                        DownloadUri = new Uri($"https://github.com/KloBraticc/SkyboxPackV2/archive/refs/heads/main.zip#{name}")
+                    });
+                }
+                var selected = AvailableSkyboxPacks.FirstOrDefault(s =>
+                    s.Name.Equals(App.Settings.Prop.SkyboxName, StringComparison.OrdinalIgnoreCase))
+                    ?? AvailableSkyboxPacks.First();
+
+                SelectedSkyboxPack = selected;
+                App.Settings.Prop.SkyboxName = selected.Name;
+            }
+            catch (HttpRequestException ex)
+            {
+                App.Logger.WriteLine("ModsViewModel::LoadSkyboxPacks", $"Failed to load skybox packs from GitHub: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("ModsViewModel::LoadSkyboxPacks", $"Unexpected error loading skybox packs: {ex.Message}");
+            }
         }
 
         private SkyboxPack? _selectedSkyboxPack;

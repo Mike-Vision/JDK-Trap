@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Windows.Forms;
 using System.Windows.Shell;
 
@@ -27,6 +27,16 @@ namespace JDKTrap.UI.Elements.Bootstrapper
             {
                 _viewModel.Message = value;
                 _viewModel.OnPropertyChanged(nameof(_viewModel.Message));
+            }
+        }
+
+        public string SubMessage
+        {
+            get => _viewModel.SubMessage;
+            set
+            {
+                _viewModel.SubMessage = value;
+                _viewModel.OnPropertyChanged(nameof(_viewModel.SubMessage));
             }
         }
 
